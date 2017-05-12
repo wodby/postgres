@@ -19,7 +19,7 @@
 | Environment Variable | Default Value | Description |
 | -------------------- | --------------| ----------- |
 | POSTGRES_CHECKPOINT_COMPLETION_TARGET | 0.7                | |
-| POSTGRES_CHECKPOINT_SEGMENTS          | 32MB               | |
+| POSTGRES_CHECKPOINT_SEGMENTS          | 32                 | <=9.4 |
 | POSTGRES_DATESTYLE                    | iso, mdy           | |
 | POSTGRES_DB                           | postgres           | |
 | POSTGRES_DEFAULT_STATISTICS_TARGET    | 100                | |

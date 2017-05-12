@@ -2,9 +2,9 @@
 
 set -e
 
-#if [[ -n "${DEBUG}" ]]; then
+if [[ -n "${DEBUG}" ]]; then
   set -x
-#fi
+fi
 
 export POSTGRES_PASSWORD='password'
 export POSTGRES_USER='superuser'

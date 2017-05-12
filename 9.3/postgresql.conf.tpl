@@ -178,7 +178,7 @@ wal_buffers = {{ getenv "POSTGRES_WAL_BUFFERS" "16MB" }}			# min 32kB, -1 sets b
 
 # - Checkpoints -
 
-checkpoint_segments = {{ getenv "POSTGRES_CHECKPOINT_SEGMENTS" "32MB" }}		# in logfile segments, min 1, 16MB each
+checkpoint_segments = {{ getenv "POSTGRES_CHECKPOINT_SEGMENTS" "32" }}		# in logfile segments, min 1, 16MB each
 #checkpoint_timeout = 5min		# range 30s-1h
 checkpoint_completion_target = {{ getenv "POSTGRES_CHECKPOINT_COMPLETION_TARGET" "0.7" }}	# checkpoint target duration, 0.0 - 1.0
 #checkpoint_warning = 30s		# 0 disables
