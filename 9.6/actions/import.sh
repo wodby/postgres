@@ -40,7 +40,7 @@ else
 fi
 
 if [ "$(find -type f | wc -l)" != "1" ]; then
-    echo >&2 "Expecting single .sql file, none or multiple found: $(find -type f)"
+    echo >&2 "Expecting single file, none or multiple found: $(find -type f)"
     exit 1
 fi
 
