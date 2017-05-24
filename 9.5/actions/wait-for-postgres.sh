@@ -3,7 +3,7 @@
 set -e
 
 if [[ ! -z "${DEBUG}" ]]; then
-  set -x
+    set -x
 fi
 
 started=0
@@ -13,6 +13,9 @@ db=$3
 host=$4
 max_try=$5
 wait_seconds=$6
+delay_seconds=$7
+
+sleep "${delay_seconds}"
 
 for i in $(seq 1 "${max_try}"); do
     if PGPASSWORD="${password}" psql -U"${user}" -h"${host}" -d"${db}" -c 'SELECT 1' &> /dev/null; then

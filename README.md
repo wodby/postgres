@@ -3,8 +3,7 @@
 [![Build Status](https://travis-ci.org/wodby/postgres.svg?branch=master)](https://travis-ci.org/wodby/postgres)
 [![Docker Pulls](https://img.shields.io/docker/pulls/wodby/postgres.svg)](https://hub.docker.com/r/wodby/postgres)
 [![Docker Stars](https://img.shields.io/docker/stars/wodby/postgres.svg)](https://hub.docker.com/r/wodby/postgres)
-
-[![Wodby Slack](https://www.google.com/s2/favicons?domain=www.slack.com) Join us on Slack](https://slack.wodby.com/)
+[![Wodby Slack](http://slack.wodby.com/badge.svg)](http://slack.wodby.com)
 
 ## Supported tags and respective `Dockerfile` links:
 
@@ -14,7 +13,7 @@
 - [`9.3`, `latest` (*9.3/Dockerfile*)](https://github.com/wodby/postgres/tree/master/9.3/Dockerfile)
 - [`9.2`, `latest` (*9.2/Dockerfile*)](https://github.com/wodby/postgres/tree/master/9.2/Dockerfile)
 
-## Environment Variables Available for Customization
+## Environment variables available for customization
 
 | Environment Variable | Default Value | Description |
 | -------------------- | --------------| ----------- |
@@ -53,7 +52,7 @@ commands:
     backup filepath=</path/to/backup.sql.gz> [user password host db ignore=<"table1;table2">] 
     query query=<SELECT 1> [user password db host] 
     query-silent query=<SELECT 1> [user password db host]
-    check-ready [user password db host max_try wait_seconds]  
+    check-ready [user password db host max_try wait_seconds delay_seconds]  
     
 default params values:
     user $POSTGRES_USER
@@ -61,7 +60,8 @@ default params values:
     db $POSTGRES_DB
     host localhost
     max_try 1
-    wait_seconds = 1
+    wait_seconds 1
+    delay_seconds 0
     ignore ""
     binary 0
 ```
@@ -70,7 +70,7 @@ Examples:
 
 ```bash
 # Check if PostgreSQL is ready
-docker exec -ti [ID] make check-ready -f /usr/local/bin/actions.mk
+docker exec -ti [ID] make check-ready max_try=10 wait_seconds=5 delay_seconds=5 -f /usr/local/bin/actions.mk
 
 # Run query
 docker exec -ti [ID] make query query="CREATE TABLE test (a Numeric, b Numeric, c VARCHAR(255))" -f /usr/local/bin/actions.mk
@@ -85,8 +85,6 @@ docker exec -ti [ID] make import source="/path/to/mounted/dir/export.sql.gz" -f 
 docker exec -ti [ID] make import source="https://example.com/url/to/sql/dump.zip" -f /usr/local/bin/actions.mk
 ```
 
-You can skip -f option if you use run instead of exec. 
-
-## Using in Production
+## Using in production
 
 Deploy PostgreSQL container to your own server via [![Wodby](https://www.google.com/s2/favicons?domain=wodby.com) Wodby](https://wodby.com).

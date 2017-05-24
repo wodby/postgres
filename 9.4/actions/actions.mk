@@ -13,6 +13,7 @@ db ?= $(POSTGRES_DB)
 host ?= localhost
 max_try ?= 1
 wait_seconds ?= 1
+delay_seconds ?= 0
 binary ?= 0
 ignore ?= ""
 
@@ -35,7 +36,7 @@ query-silent:
 	@PGPASSWORD=$(password) psql -tA -U$(user) -h$(host) -d$(db) -c "$(query)"
 
 check-ready:
-	wait-for-postgres.sh $(user) $(password) $(db) $(host) $(max_try) $(wait_seconds)
+	wait-for-postgres.sh $(user) $(password) $(db) $(host) $(max_try) $(wait_seconds) $(delay_seconds)
 
 check-live:
 	@echo "OK"
