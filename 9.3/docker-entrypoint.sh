@@ -3,10 +3,11 @@
 set -e
 
 if [[ -n "${DEBUG}" ]]; then
-  set -x
+    set -x
 fi
 
 if [[ -z "${POSTGRES_PASSWORD}" ]]; then
+    echo "Environment variable POSTGRES_PASSWORD is required. Exiting."
     exit 1
 fi
 
