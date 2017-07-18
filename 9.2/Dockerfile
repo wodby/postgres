@@ -1,4 +1,4 @@
-FROM postgres:9.2-alpine
+FROM postgres:9.2.21-alpine
 
 ENV GOTPL_VER 0.1.5
 ENV POSTGRES_USER postgres
@@ -16,6 +16,7 @@ COPY actions /usr/local/bin
 
 COPY *.tpl /etc/gotpl/
 COPY docker-entrypoint.sh /
+COPY init /docker-entrypoint-initdb.d/
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["-c", "config_file=/etc/postgresql/postgresql.conf"]

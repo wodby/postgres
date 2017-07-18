@@ -1,47 +1,54 @@
-# Generic PostgreSQL docker container image
+# PostgreSQL Docker Container Image
 
 [![Build Status](https://travis-ci.org/wodby/postgres.svg?branch=master)](https://travis-ci.org/wodby/postgres)
 [![Docker Pulls](https://img.shields.io/docker/pulls/wodby/postgres.svg)](https://hub.docker.com/r/wodby/postgres)
 [![Docker Stars](https://img.shields.io/docker/stars/wodby/postgres.svg)](https://hub.docker.com/r/wodby/postgres)
 [![Wodby Slack](http://slack.wodby.com/badge.svg)](http://slack.wodby.com)
 
-## Supported tags and respective `Dockerfile` links:
+## Docker Images
 
-- [`9.6`, `latest` (*9.6/Dockerfile*)](https://github.com/wodby/postgres/tree/master/9.6/Dockerfile)
-- [`9.5`, `latest` (*9.5/Dockerfile*)](https://github.com/wodby/postgres/tree/master/9.5/Dockerfile)
-- [`9.4`, `latest` (*9.4/Dockerfile*)](https://github.com/wodby/postgres/tree/master/9.4/Dockerfile)
-- [`9.3`, `latest` (*9.3/Dockerfile*)](https://github.com/wodby/postgres/tree/master/9.3/Dockerfile)
-- [`9.2`, `latest` (*9.2/Dockerfile*)](https://github.com/wodby/postgres/tree/master/9.2/Dockerfile)
+Images are based on [_/postgres](https://hub.docker.com/r/_/postgres/) images, built via [Travis CI](https://travis-ci.org/wodby/postgres) and published on [Docker Hub](https://hub.docker.com/r/wodby/postgres). 
 
-## Environment variables available for customization
+## Versions
 
-| Environment Variable | Default Value | Description |
-| -------------------- | --------------| ----------- |
-| POSTGRES_CHECKPOINT_COMPLETION_TARGET | 0.7                | |
-| POSTGRES_CHECKPOINT_SEGMENTS          | 32                 | <=9.4 |
-| POSTGRES_DATESTYLE                    | iso, mdy           | |
-| POSTGRES_DB                           | postgres           | |
-| POSTGRES_DEFAULT_STATISTICS_TARGET    | 100                | |
-| POSTGRES_DEFAULT_TEXT_SEARCH_CONFIG   | pg_catalog.english | |
-| POSTGRES_EFFECTIVE_CACHE_SIZE         | 1GB                | |
-| POSTGRES_LC_MESSAGES                  | en_US.utf8         | |
-| POSTGRES_LC_MONETARY                  | en_US.utf8         | |
-| POSTGRES_LC_NUMERIC                   | en_US.utf8         | |
-| POSTGRES_LC_TIME                      | en_US.utf8         | |
-| POSTGRES_LOG_TIMEZONE                 | UTC                | |
-| POSTGRES_MAINTENANCE_WORK_MEM         | 128MB              | |
-| POSTGRES_MAX_CONNECTIONS              | 100                | |
-| POSTGRES_MAX_WAL_SIZE                 | 2GB                | >=9.5 |
-| POSTGRES_MIN_WAL_SIZE                 | 1GB                | >=9.5 |
-| POSTGRES_SHARED_BUFFERS               | 512MB              | |
-| POSTGRES_SHARED_MEMORY_TYPE           | posix              | >=9.4 |
-| POSTGRES_TIMEZONE                     | UTC                | | 
-| POSTGRES_PASSWORD                     |                    | REQUIRED |
-| POSTGRES_USER                         | postgres           | |
-| POSTGRES_WAL_BUFFERS                  | 16MB               | |
-| POSTGRES_WORK_MEM                     | 5MB                | |
+| PostgreSQL | Alpine Linux |
+| ---------- | ------------ |
+| [9.6.3](https://github.com/wodby/postgres/tree/master/9.6/Dockerfile)  | 3.5 |
+| [9.5.7](https://github.com/wodby/postgres/tree/master/9.5/Dockerfile)  | 3.5 |
+| [9.4.12](https://github.com/wodby/postgres/tree/master/9.4/Dockerfile) | 3.5 |
+| [9.3.17](https://github.com/wodby/postgres/tree/master/9.3/Dockerfile) | 3.5 |
+| [9.2.21](https://github.com/wodby/postgres/tree/master/9.2/Dockerfile) | 3.5 |
 
-## Actions
+## Environment Variables
+
+| Variable | Default Value | Description |
+| -------- | --------------| ----------- |
+| POSTGRES_CHECKPOINT_COMPLETION_TARGET | 0.7                |                    |
+| POSTGRES_CHECKPOINT_SEGMENTS          | 32                 | <=9.4              |
+| POSTGRES_DATESTYLE                    | iso, mdy           |                    |
+| POSTGRES_DB                           | postgres           |                    |
+| POSTGRES_DEFAULT_STATISTICS_TARGET    | 100                |                    |
+| POSTGRES_DEFAULT_TEXT_SEARCH_CONFIG   | pg_catalog.english |                    |
+| POSTGRES_EFFECTIVE_CACHE_SIZE         | 1GB                |                    |
+| POSTGRES_DB_EXTENSIONS                |                    | Separated by comma |
+| POSTGRES_LC_MESSAGES                  | en_US.utf8         |                    |
+| POSTGRES_LC_MONETARY                  | en_US.utf8         |                    |
+| POSTGRES_LC_NUMERIC                   | en_US.utf8         |                    |
+| POSTGRES_LC_TIME                      | en_US.utf8         |                    |
+| POSTGRES_LOG_TIMEZONE                 | UTC                |                    |
+| POSTGRES_MAINTENANCE_WORK_MEM         | 128MB              |                    |
+| POSTGRES_MAX_CONNECTIONS              | 100                |                    |
+| POSTGRES_MAX_WAL_SIZE                 | 2GB                | >=9.5              |
+| POSTGRES_MIN_WAL_SIZE                 | 1GB                | >=9.5              |
+| POSTGRES_SHARED_BUFFERS               | 512MB              |                    |
+| POSTGRES_SHARED_MEMORY_TYPE           | posix              | >=9.4              |
+| POSTGRES_TIMEZONE                     | UTC                |                    |
+| POSTGRES_PASSWORD                     |                    | REQUIRED           |
+| POSTGRES_USER                         | postgres           |                    |
+| POSTGRES_WAL_BUFFERS                  | 16MB               |                    |
+| POSTGRES_WORK_MEM                     | 5MB                |                    |
+
+## Orchestration Actions
 
 Usage:
 ```
@@ -85,6 +92,6 @@ docker exec -ti [ID] make import source="/path/to/mounted/dir/export.sql.gz" -f 
 docker exec -ti [ID] make import source="https://example.com/url/to/sql/dump.zip" -f /usr/local/bin/actions.mk
 ```
 
-## Using in production
+## Deployment
 
-Deploy PostgreSQL container to your own server via [![Wodby](https://www.google.com/s2/favicons?domain=wodby.com) Wodby](https://wodby.com).
+Deploy PostgreSQL to your server via [![Wodby](https://www.google.com/s2/favicons?domain=wodby.com) Wodby](https://cloud.wodby.com/stackhub/68172333-6d47-46e0-afd9-08c2170a73b0).
