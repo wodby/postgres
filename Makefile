@@ -20,7 +20,7 @@ endif
 default: build
 
 build:
-	docker build -t $(REPO):$(TAG) --build-arg FROM_TAG=$(FROM_TAG) ./
+	docker build -t $(REPO):$(TAG) --build-arg FROM_TAG=$(FROM_TAG) --build-arg POSTGRES_VER=$(POSTGRES_VER) ./
 
 test:
 	NAME=$(NAME) IMAGE=$(REPO):$(TAG) ./test.sh
@@ -29,7 +29,7 @@ push:
 	docker push $(REPO):$(TAG)
 
 shell:
-	docker run --rm --name $(NAME) -i -t $(PORTS) $(VOLUMES) $(ENV) $(REPO):$(TAG) /bin/bash
+	docker run --rm --name $(NAME) -e POSTGRES_PASSWORD=password -i -t $(PORTS) $(VOLUMES) $(ENV) $(REPO):$(TAG) /bin/bash
 
 run:
 	docker run --rm --name $(NAME) -e POSTGRES_PASSWORD=password $(PORTS) $(VOLUMES) $(ENV) $(REPO):$(TAG) $(CMD)

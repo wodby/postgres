@@ -19,8 +19,8 @@
 
 Supported tags and respective `Dockerfile` links:
 
-* `10.1`, `latest` [_(Dockerfile)_]
-* `9.6` [_(Dockerfile)_]
+* `10`, `10.1`, `latest` [_(Dockerfile)_]
+* `9`, `9.6` [_(Dockerfile)_]
 * `9.5` [_(Dockerfile)_]
 * `9.4` [_(Dockerfile)_]
 * `9.3` [_(Dockerfile)_]
