@@ -56,14 +56,14 @@
 
 # - Connection Settings -
 
-listen_addresses = '*'
+#listen_addresses = 'localhost'		# what IP address(es) to listen on;
 					# comma-separated list of addresses;
 					# defaults to 'localhost'; use '*' for all
 					# (change requires restart)
 #port = 5432				# (change requires restart)
-max_connections = {{ getenv "POSTGRES_MAX_CONNECTIONS" "100" }}			# (change requires restart)
+#max_connections = 100			# (change requires restart)
 #superuser_reserved_connections = 3	# (change requires restart)
-#unix_socket_directories = '/var/run/postgresql'	# comma-separated list of directories
+#unix_socket_directories = '/tmp'	# comma-separated list of directories
 					# (change requires restart)
 #unix_socket_group = ''			# (change requires restart)
 #unix_socket_permissions = 0777		# begin with 0 to use octal notation
@@ -110,7 +110,7 @@ max_connections = {{ getenv "POSTGRES_MAX_CONNECTIONS" "100" }}			# (change requ
 
 # - Memory -
 
-shared_buffers = {{ getenv "POSTGRES_SHARED_BUFFERS" "512MB" }}			# min 128kB
+#shared_buffers = 32MB			# min 128kB
 					# (change requires restart)
 #huge_pages = try			# on, off, or try
 					# (change requires restart)
@@ -119,18 +119,19 @@ shared_buffers = {{ getenv "POSTGRES_SHARED_BUFFERS" "512MB" }}			# min 128kB
 					# (change requires restart)
 # Caution: it is not advisable to set max_prepared_transactions nonzero unless
 # you actively intend to use prepared transactions.
-work_mem = {{ getenv "POSTGRES_WORK_MEM" "5MB" }}				# min 64kB
-maintenance_work_mem = {{ getenv "POSTGRES_MAINTENANCE_WORK_MEM" "128MB" }} # min 1MB
+#work_mem = 4MB				# min 64kB
+#maintenance_work_mem = 64MB		# min 1MB
 #replacement_sort_tuples = 150000	# limits use of replacement selection sort
 #autovacuum_work_mem = -1		# min 1MB, or -1 to use maintenance_work_mem
 #max_stack_depth = 2MB			# min 100kB
-dynamic_shared_memory_type = {{ getenv "POSTGRES_SHARED_MEMORY_TYPE" "posix" }}	# the default is the first option
+#dynamic_shared_memory_type = posix	# the default is the first option
 					# supported by the operating system:
 					#   posix
 					#   sysv
 					#   windows
 					#   mmap
 					# use none to disable dynamic shared memory
+					# (change requires restart)
 
 # - Disk -
 
@@ -156,7 +157,7 @@ dynamic_shared_memory_type = {{ getenv "POSTGRES_SHARED_MEMORY_TYPE" "posix" }}	
 #bgwriter_delay = 200ms			# 10-10000ms between rounds
 #bgwriter_lru_maxpages = 100		# 0-1000 max buffers written/round
 #bgwriter_lru_multiplier = 2.0		# 0-10.0 multiplier on buffers scanned/round
-#bgwriter_flush_after = 512kB		# measured in pages, 0 disables
+#bgwriter_flush_after = 0		# measured in pages, 0 disables
 
 # - Asynchronous Behavior -
 
@@ -192,7 +193,7 @@ dynamic_shared_memory_type = {{ getenv "POSTGRES_SHARED_MEMORY_TYPE" "posix" }}	
 #wal_compression = off			# enable compression of full-page writes
 #wal_log_hints = off			# also do full page writes of non-critical updates
 					# (change requires restart)
-wal_buffers = {{ getenv "POSTGRES_WAL_BUFFERS" "16MB" }}			# min 32kB, -1 sets based on shared_buffers
+#wal_buffers = -1			# min 32kB, -1 sets based on shared_buffers
 					# (change requires restart)
 #wal_writer_delay = 200ms		# 1-10000 milliseconds
 #wal_writer_flush_after = 1MB		# measured in pages, 0 disables
@@ -203,10 +204,10 @@ wal_buffers = {{ getenv "POSTGRES_WAL_BUFFERS" "16MB" }}			# min 32kB, -1 sets b
 # - Checkpoints -
 
 #checkpoint_timeout = 5min		# range 30s-1d
-max_wal_size = {{ getenv "POSTGRES_MAX_WAL_SIZE" "2GB" }}
-min_wal_size = {{ getenv "POSTGRES_MIN_WAL_SIZE" "1GB" }}
-checkpoint_completion_target = {{ getenv "POSTGRES_CHECKPOINT_COMPLETION_TARGET" "0.7" }}	# checkpoint target duration, 0.0 - 1.0
-#checkpoint_flush_after = 256kB		# measured in pages, 0 disables
+#max_wal_size = 1GB
+#min_wal_size = 80MB
+#checkpoint_completion_target = 0.5	# checkpoint target duration, 0.0 - 1.0
+#checkpoint_flush_after = 0		# measured in pages, 0 disables
 #checkpoint_warning = 30s		# 0 disables
 
 # - Archiving -
@@ -299,7 +300,7 @@ checkpoint_completion_target = {{ getenv "POSTGRES_CHECKPOINT_COMPLETION_TARGET"
 #parallel_tuple_cost = 0.1		# same scale as above
 #parallel_setup_cost = 1000.0	# same scale as above
 #min_parallel_relation_size = 8MB
-effective_cache_size = {{ getenv "POSTGRES_EFFECTIVE_CACHE_SIZE" "1GB" }}
+#effective_cache_size = 4GB
 
 # - Genetic Query Optimizer -
 
@@ -313,7 +314,7 @@ effective_cache_size = {{ getenv "POSTGRES_EFFECTIVE_CACHE_SIZE" "1GB" }}
 
 # - Other Planner Options -
 
-default_statistics_target = {{ getenv "POSTGRES_DEFAULT_STATISTICS_TARGET" "100" }}	# range 1-10000
+#default_statistics_target = 100	# range 1-10000
 #constraint_exclusion = partition	# on, off, or partition
 #cursor_tuple_fraction = 0.1		# range 0.0-1.0
 #from_collapse_limit = 8
@@ -367,6 +368,7 @@ default_statistics_target = {{ getenv "POSTGRES_DEFAULT_STATISTICS_TARGET" "100"
 #syslog_split_messages = on
 
 # This is only relevant when logging to eventlog (win32):
+# (change requires restart)
 #event_source = 'PostgreSQL'
 
 # - When to Log -
@@ -455,7 +457,7 @@ default_statistics_target = {{ getenv "POSTGRES_DEFAULT_STATISTICS_TARGET" "100"
 #log_temp_files = -1			# log temporary files equal or larger
 					# than the specified size in kilobytes;
 					# -1 disables, 0 logs all temp files
-log_timezone = '{{ getenv "POSTGRES_LOG_TIMEZONE" "UTC" }}'
+#log_timezone = 'GMT'
 
 
 # - Process Title -
@@ -549,9 +551,9 @@ log_timezone = '{{ getenv "POSTGRES_LOG_TIMEZONE" "UTC" }}'
 
 # - Locale and Formatting -
 
-datestyle = '{{ getenv "POSTGRES_DATESTYLE" "iso, mdy" }}'
+#datestyle = 'iso, mdy'
 #intervalstyle = 'postgres'
-timezone = '{{ getenv "POSTGRES_TIMEZONE" "UTC" }}'
+#timezone = 'GMT'
 #timezone_abbreviations = 'Default'     # Select the set of available time zone
 					# abbreviations.  Currently, there are
 					#   Default
@@ -564,14 +566,14 @@ timezone = '{{ getenv "POSTGRES_TIMEZONE" "UTC" }}'
 					# encoding
 
 # These settings are initialized by initdb, but they can be changed.
-lc_messages = '{{ getenv "POSTGRES_LC_MESSAGES" "en_US.utf8" }}'			# locale for system error message
+#lc_messages = 'C'			# locale for system error message
 					# strings
-lc_monetary = '{{ getenv "POSTGRES_LC_MONETARY" "en_US.utf8" }}'			# locale for monetary formatting
-lc_numeric = '{{ getenv "POSTGRES_LC_NUMERIC" "en_US.utf8" }}'			# locale for number formatting
-lc_time = '{{ getenv "POSTGRES_LC_TIME" "en_US.utf8" }}'				# locale for time formatting
+#lc_monetary = 'C'			# locale for monetary formatting
+#lc_numeric = 'C'			# locale for number formatting
+#lc_time = 'C'				# locale for time formatting
 
 # default configuration for text search
-default_text_search_config = '{{ getenv "POSTGRES_DEFAULT_TEXT_SEARCH_CONFIG" "pg_catalog.english" }}'
+#default_text_search_config = 'pg_catalog.simple'
 
 # - Other Defaults -
 

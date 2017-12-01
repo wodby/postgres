@@ -16,9 +16,9 @@
 #
 # This file is read on server startup and when the server receives a SIGHUP
 # signal.  If you edit the file on a running system, you have to SIGHUP the
-# server for the changes to take effect, or use "pg_ctl reload".  Some
-# parameters, which are marked below, require a server shutdown and restart to
-# take effect.
+# server for the changes to take effect, run "pg_ctl reload", or execute
+# "SELECT pg_reload_conf()".  Some parameters, which are marked below,
+# require a server shutdown and restart to take effect.
 #
 # Any parameter can also be given as a command-line option to the server, e.g.,
 # "postgres -c log_connections=on".  Some parameters can be changed at run time
@@ -27,7 +27,7 @@
 # Memory units:  kB = kilobytes        Time units:  ms  = milliseconds
 #                MB = megabytes                     s   = seconds
 #                GB = gigabytes                     min = minutes
-#                                                   h   = hours
+#                TB = terabytes                     h   = hours
 #                                                   d   = days
 
 
@@ -56,16 +56,15 @@
 
 # - Connection Settings -
 
-listen_addresses = '*'
+#listen_addresses = 'localhost'		# what IP address(es) to listen on;
 					# comma-separated list of addresses;
 					# defaults to 'localhost'; use '*' for all
 					# (change requires restart)
 #port = 5432				# (change requires restart)
-max_connections = {{ getenv "POSTGRES_MAX_CONNECTIONS" "100" }}			# (change requires restart)
-# Note:  Increasing max_connections costs ~400 bytes of shared memory per
-# connection slot, plus lock space (see max_locks_per_transaction).
+#max_connections = 100			# (change requires restart)
 #superuser_reserved_connections = 3	# (change requires restart)
-#unix_socket_directory = ''		# (change requires restart)
+#unix_socket_directories = '/tmp'	# comma-separated list of directories
+					# (change requires restart)
 #unix_socket_group = ''			# (change requires restart)
 #unix_socket_permissions = 0777		# begin with 0 to use octal notation
 					# (change requires restart)
@@ -77,20 +76,21 @@ max_connections = {{ getenv "POSTGRES_MAX_CONNECTIONS" "100" }}			# (change requ
 # - Security and Authentication -
 
 #authentication_timeout = 1min		# 1s-600s
-#ssl = off				# (change requires restart)
-#ssl_ciphers = 'ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH'	# allowed SSL ciphers
-					# (change requires restart)
-#ssl_renegotiation_limit = 0		# amount of data between renegotiations
-#ssl_cert_file = 'server.crt'		# (change requires restart)
-#ssl_key_file = 'server.key'		# (change requires restart)
-#ssl_ca_file = ''			# (change requires restart)
-#ssl_crl_file = ''			# (change requires restart)
-#password_encryption = on
+#ssl = off
+#ssl_ciphers = 'HIGH:MEDIUM:+3DES:!aNULL' # allowed SSL ciphers
+#ssl_prefer_server_ciphers = on
+#ssl_ecdh_curve = 'prime256v1'
+#ssl_dh_params_file = ''
+#ssl_cert_file = 'server.crt'
+#ssl_key_file = 'server.key'
+#ssl_ca_file = ''
+#ssl_crl_file = ''
+#password_encryption = md5		# md5 or scram-sha-256
 #db_user_namespace = off
+#row_security = on
 
-# Kerberos and GSSAPI
+# GSSAPI using Kerberos
 #krb_server_keyfile = ''
-#krb_srvname = 'postgres'		# (Kerberos only)
 #krb_caseins_users = off
 
 # - TCP Keepalives -
@@ -110,22 +110,32 @@ max_connections = {{ getenv "POSTGRES_MAX_CONNECTIONS" "100" }}			# (change requ
 
 # - Memory -
 
-shared_buffers = {{ getenv "POSTGRES_SHARED_BUFFERS" "512MB" }}			# min 128kB
+#shared_buffers = 32MB			# min 128kB
+					# (change requires restart)
+#huge_pages = try			# on, off, or try
 					# (change requires restart)
 #temp_buffers = 8MB			# min 800kB
 #max_prepared_transactions = 0		# zero disables the feature
 					# (change requires restart)
-# Note:  Increasing max_prepared_transactions costs ~600 bytes of shared memory
-# per transaction slot, plus lock space (see max_locks_per_transaction).
-# It is not advisable to set max_prepared_transactions nonzero unless you
-# actively intend to use prepared transactions.
-work_mem = {{ getenv "POSTGRES_WORK_MEM" "5MB" }}				# min 64kB
-maintenance_work_mem = {{ getenv "POSTGRES_MAINTENANCE_WORK_MEM" "128MB" }} # min 1MB
+# Caution: it is not advisable to set max_prepared_transactions nonzero unless
+# you actively intend to use prepared transactions.
+#work_mem = 4MB				# min 64kB
+#maintenance_work_mem = 64MB		# min 1MB
+#replacement_sort_tuples = 150000	# limits use of replacement selection sort
+#autovacuum_work_mem = -1		# min 1MB, or -1 to use maintenance_work_mem
 #max_stack_depth = 2MB			# min 100kB
+#dynamic_shared_memory_type = posix	# the default is the first option
+					# supported by the operating system:
+					#   posix
+					#   sysv
+					#   windows
+					#   mmap
+					# use none to disable dynamic shared memory
+					# (change requires restart)
 
 # - Disk -
 
-#temp_file_limit = -1			# limits per-session temp file space
+#temp_file_limit = -1			# limits per-process temp file space
 					# in kB, or -1 for no limit
 
 # - Kernel Resource Usage -
@@ -136,7 +146,7 @@ maintenance_work_mem = {{ getenv "POSTGRES_MAINTENANCE_WORK_MEM" "128MB" }} # mi
 
 # - Cost-Based Vacuum Delay -
 
-#vacuum_cost_delay = 0ms		# 0-100 milliseconds
+#vacuum_cost_delay = 0			# 0-100 milliseconds
 #vacuum_cost_page_hit = 1		# 0-10000 credits
 #vacuum_cost_page_miss = 10		# 0-10000 credits
 #vacuum_cost_page_dirty = 20		# 0-10000 credits
@@ -146,11 +156,19 @@ maintenance_work_mem = {{ getenv "POSTGRES_MAINTENANCE_WORK_MEM" "128MB" }} # mi
 
 #bgwriter_delay = 200ms			# 10-10000ms between rounds
 #bgwriter_lru_maxpages = 100		# 0-1000 max buffers written/round
-#bgwriter_lru_multiplier = 2.0		# 0-10.0 multipler on buffers scanned/round
+#bgwriter_lru_multiplier = 2.0		# 0-10.0 multiplier on buffers scanned/round
+#bgwriter_flush_after = 0		# measured in pages, 0 disables
 
 # - Asynchronous Behavior -
 
 #effective_io_concurrency = 1		# 1-1000; 0 disables prefetching
+#max_worker_processes = 8		# (change requires restart)
+#max_parallel_workers_per_gather = 2	# taken from max_parallel_workers
+#max_parallel_workers = 8		# maximum number of max_worker_processes that
+					# can be used in parallel queries
+#old_snapshot_threshold = -1		# 1min-60d; -1 disables; 0 is immediate
+					# (change requires restart)
+#backend_flush_after = 0		# measured in pages, 0 disables
 
 
 #------------------------------------------------------------------------------
@@ -159,11 +177,13 @@ maintenance_work_mem = {{ getenv "POSTGRES_MAINTENANCE_WORK_MEM" "128MB" }} # mi
 
 # - Settings -
 
-#wal_level = minimal			# minimal, archive, or hot_standby
+#wal_level = replica			# minimal, replica, or logical
 					# (change requires restart)
-#fsync = on				# turns forced synchronization on or off
+#fsync = on				# flush data to disk for crash safety
+					# (turning this off can cause
+					# unrecoverable data corruption)
 #synchronous_commit = on		# synchronization level;
-					# off, local, remote_write, or on
+					# off, local, remote_write, remote_apply, or on
 #wal_sync_method = fsync		# the default is the first option
 					# supported by the operating system:
 					#   open_datasync
@@ -172,23 +192,29 @@ maintenance_work_mem = {{ getenv "POSTGRES_MAINTENANCE_WORK_MEM" "128MB" }} # mi
 					#   fsync_writethrough
 					#   open_sync
 #full_page_writes = on			# recover from partial page writes
-wal_buffers = {{ getenv "POSTGRES_WAL_BUFFERS" "16MB" }}			# min 32kB, -1 sets based on shared_buffers
+#wal_compression = off			# enable compression of full-page writes
+#wal_log_hints = off			# also do full page writes of non-critical updates
+					# (change requires restart)
+#wal_buffers = -1			# min 32kB, -1 sets based on shared_buffers
 					# (change requires restart)
 #wal_writer_delay = 200ms		# 1-10000 milliseconds
+#wal_writer_flush_after = 1MB		# measured in pages, 0 disables
 
 #commit_delay = 0			# range 0-100000, in microseconds
 #commit_siblings = 5			# range 1-1000
 
 # - Checkpoints -
 
-checkpoint_segments = {{ getenv "POSTGRES_CHECKPOINT_SEGMENTS" "32" }}		# in logfile segments, min 1, 16MB each
-#checkpoint_timeout = 5min		# range 30s-1h
-checkpoint_completion_target = {{ getenv "POSTGRES_CHECKPOINT_COMPLETION_TARGET" "0.7" }}	# checkpoint target duration, 0.0 - 1.0
+#checkpoint_timeout = 5min		# range 30s-1d
+#max_wal_size = 1GB
+#min_wal_size = 80MB
+#checkpoint_completion_target = 0.5	# checkpoint target duration, 0.0 - 1.0
+#checkpoint_flush_after = 0		# measured in pages, 0 disables
 #checkpoint_warning = 30s		# 0 disables
 
 # - Archiving -
 
-#archive_mode = off		# allows archiving to be done
+#archive_mode = off		# enables archiving; off, on, or always
 				# (change requires restart)
 #archive_command = ''		# command to use to archive a logfile segment
 				# placeholders: %p = path of file to archive
@@ -206,17 +232,23 @@ checkpoint_completion_target = {{ getenv "POSTGRES_CHECKPOINT_COMPLETION_TARGET"
 
 # Set these on the master and on any standby that will send replication data.
 
-#max_wal_senders = 0		# max number of walsender processes
+#max_wal_senders = 10		# max number of walsender processes
 				# (change requires restart)
 #wal_keep_segments = 0		# in logfile segments, 16MB each; 0 disables
-#replication_timeout = 60s	# in milliseconds; 0 disables
+#wal_sender_timeout = 60s	# in milliseconds; 0 disables
+
+#max_replication_slots = 10	# max number of replication slots
+				# (change requires restart)
+#track_commit_timestamp = off	# collect timestamp of transaction commit
+				# (change requires restart)
 
 # - Master Server -
 
 # These settings are ignored on a standby server.
 
 #synchronous_standby_names = ''	# standby servers that provide sync rep
-				# comma-separated list of application_name
+				# method to choose sync standbys, number of sync standbys,
+				# and comma-separated list of application_name
 				# from standby(s); '*' = all
 #vacuum_defer_cleanup_age = 0	# number of xacts by which cleanup is delayed
 
@@ -224,7 +256,7 @@ checkpoint_completion_target = {{ getenv "POSTGRES_CHECKPOINT_COMPLETION_TARGET"
 
 # These settings are ignored on a master server.
 
-#hot_standby = off			# "on" allows queries during recovery
+#hot_standby = on			# "off" disallows queries during recovery
 					# (change requires restart)
 #max_standby_archive_delay = 30s	# max delay before canceling queries
 					# when reading WAL from archive;
@@ -236,6 +268,19 @@ checkpoint_completion_target = {{ getenv "POSTGRES_CHECKPOINT_COMPLETION_TARGET"
 					# 0 disables
 #hot_standby_feedback = off		# send info from standby to prevent
 					# query conflicts
+#wal_receiver_timeout = 60s		# time that receiver waits for
+					# communication from master
+					# in milliseconds; 0 disables
+#wal_retrieve_retry_interval = 5s	# time to wait before retrying to
+					# retrieve WAL after a failed attempt
+
+# - Subscribers -
+
+# These settings are ignored on a publisher.
+
+#max_logical_replication_workers = 4	# taken from max_worker_processes
+					# (change requires restart)
+#max_sync_workers_per_subscription = 2	# taken from max_logical_replication_workers
 
 
 #------------------------------------------------------------------------------
@@ -263,7 +308,11 @@ checkpoint_completion_target = {{ getenv "POSTGRES_CHECKPOINT_COMPLETION_TARGET"
 #cpu_tuple_cost = 0.01			# same scale as above
 #cpu_index_tuple_cost = 0.005		# same scale as above
 #cpu_operator_cost = 0.0025		# same scale as above
-effective_cache_size = {{ getenv "POSTGRES_EFFECTIVE_CACHE_SIZE" "1GB" }}
+#parallel_tuple_cost = 0.1		# same scale as above
+#parallel_setup_cost = 1000.0	# same scale as above
+#min_parallel_table_scan_size = 8MB
+#min_parallel_index_scan_size = 512kB
+#effective_cache_size = 4GB
 
 # - Genetic Query Optimizer -
 
@@ -277,12 +326,13 @@ effective_cache_size = {{ getenv "POSTGRES_EFFECTIVE_CACHE_SIZE" "1GB" }}
 
 # - Other Planner Options -
 
-default_statistics_target = {{ getenv "POSTGRES_DEFAULT_STATISTICS_TARGET" "100" }}	# range 1-10000
+#default_statistics_target = 100	# range 1-10000
 #constraint_exclusion = partition	# on, off, or partition
 #cursor_tuple_fraction = 0.1		# range 0.0-1.0
 #from_collapse_limit = 8
 #join_collapse_limit = 8		# 1 disables collapsing of explicit
 					# JOIN clauses
+#force_parallel_mode = off
 
 
 #------------------------------------------------------------------------------
@@ -303,7 +353,7 @@ default_statistics_target = {{ getenv "POSTGRES_DEFAULT_STATISTICS_TARGET" "100"
 					# (change requires restart)
 
 # These are only used if logging_collector is on:
-#log_directory = 'pg_log'		# directory where log files are written,
+#log_directory = 'log'			# directory where log files are written,
 					# can be absolute or relative to PGDATA
 #log_filename = 'postgresql-%Y-%m-%d_%H%M%S.log'	# log file name pattern,
 					# can include strftime() escapes
@@ -326,8 +376,11 @@ default_statistics_target = {{ getenv "POSTGRES_DEFAULT_STATISTICS_TARGET" "100"
 # These are relevant when logging to syslog:
 #syslog_facility = 'LOCAL0'
 #syslog_ident = 'postgres'
+#syslog_sequence_numbers = on
+#syslog_split_messages = on
 
 # This is only relevant when logging to eventlog (win32):
+# (change requires restart)
 #event_source = 'PostgreSQL'
 
 # - When to Log -
@@ -358,12 +411,12 @@ default_statistics_target = {{ getenv "POSTGRES_DEFAULT_STATISTICS_TARGET" "100"
 					#   panic
 
 #log_min_error_statement = error	# values in order of decreasing detail:
-				 	#   debug5
+					#   debug5
 					#   debug4
 					#   debug3
 					#   debug2
 					#   debug1
-				 	#   info
+					#   info
 					#   notice
 					#   warning
 					#   error
@@ -389,7 +442,7 @@ default_statistics_target = {{ getenv "POSTGRES_DEFAULT_STATISTICS_TARGET" "100"
 #log_duration = off
 #log_error_verbosity = default		# terse, default, or verbose messages
 #log_hostname = off
-#log_line_prefix = ''			# special values:
+#log_line_prefix = '%m [%p] '		# special values:
 					#   %a = application name
 					#   %u = user name
 					#   %d = database name
@@ -398,6 +451,7 @@ default_statistics_target = {{ getenv "POSTGRES_DEFAULT_STATISTICS_TARGET" "100"
 					#   %p = process ID
 					#   %t = timestamp without milliseconds
 					#   %m = timestamp with milliseconds
+					#   %n = timestamp with milliseconds (as a Unix epoch)
 					#   %i = command tag
 					#   %e = SQL state
 					#   %c = session ID
@@ -411,10 +465,18 @@ default_statistics_target = {{ getenv "POSTGRES_DEFAULT_STATISTICS_TARGET" "100"
 					# e.g. '<%u%%%d> '
 #log_lock_waits = off			# log lock waits >= deadlock_timeout
 #log_statement = 'none'			# none, ddl, mod, all
+#log_replication_commands = off
 #log_temp_files = -1			# log temporary files equal or larger
 					# than the specified size in kilobytes;
 					# -1 disables, 0 logs all temp files
-log_timezone = '{{ getenv "POSTGRES_LOG_TIMEZONE" "UTC" }}'
+#log_timezone = 'GMT'
+
+
+# - Process Title -
+
+#cluster_name = ''			# added to process titles if nonempty
+					# (change requires restart)
+#update_process_title = on
 
 
 #------------------------------------------------------------------------------
@@ -427,8 +489,7 @@ log_timezone = '{{ getenv "POSTGRES_LOG_TIMEZONE" "UTC" }}'
 #track_counts = on
 #track_io_timing = off
 #track_functions = none			# none, pl, all
-#track_activity_query_size = 1024 	# (change requires restart)
-#update_process_title = on
+#track_activity_query_size = 1024	# (change requires restart)
 #stats_temp_directory = 'pg_stat_tmp'
 
 
@@ -461,6 +522,9 @@ log_timezone = '{{ getenv "POSTGRES_LOG_TIMEZONE" "UTC" }}'
 #autovacuum_analyze_scale_factor = 0.1	# fraction of table size before analyze
 #autovacuum_freeze_max_age = 200000000	# maximum XID age before forced vacuum
 					# (change requires restart)
+#autovacuum_multixact_freeze_max_age = 400000000	# maximum multixact age
+					# before forced vacuum
+					# (change requires restart)
 #autovacuum_vacuum_cost_delay = 20ms	# default vacuum cost delay for
 					# autovacuum, in milliseconds;
 					# -1 means use vacuum_cost_delay
@@ -475,7 +539,7 @@ log_timezone = '{{ getenv "POSTGRES_LOG_TIMEZONE" "UTC" }}'
 
 # - Statement Behavior -
 
-#search_path = '"$user",public'		# schema names
+#search_path = '"$user", public'	# schema names
 #default_tablespace = ''		# a tablespace name, '' uses the default
 #temp_tablespaces = ''			# a list of tablespace names, '' uses
 					# only default tablespace
@@ -485,18 +549,23 @@ log_timezone = '{{ getenv "POSTGRES_LOG_TIMEZONE" "UTC" }}'
 #default_transaction_deferrable = off
 #session_replication_role = 'origin'
 #statement_timeout = 0			# in milliseconds, 0 is disabled
+#lock_timeout = 0			# in milliseconds, 0 is disabled
+#idle_in_transaction_session_timeout = 0	# in milliseconds, 0 is disabled
 #vacuum_freeze_min_age = 50000000
 #vacuum_freeze_table_age = 150000000
+#vacuum_multixact_freeze_min_age = 5000000
+#vacuum_multixact_freeze_table_age = 150000000
 #bytea_output = 'hex'			# hex, escape
 #xmlbinary = 'base64'
 #xmloption = 'content'
 #gin_fuzzy_search_limit = 0
+#gin_pending_list_limit = 4MB
 
 # - Locale and Formatting -
 
-datestyle = 'iso, mdy'
+#datestyle = 'iso, mdy'
 #intervalstyle = 'postgres'
-timezone = '{{ getenv "POSTGRES_TIMEZONE" "UTC" }}'
+#timezone = 'GMT'
 #timezone_abbreviations = 'Default'     # Select the set of available time zone
 					# abbreviations.  Currently, there are
 					#   Default
@@ -509,19 +578,20 @@ timezone = '{{ getenv "POSTGRES_TIMEZONE" "UTC" }}'
 					# encoding
 
 # These settings are initialized by initdb, but they can be changed.
-lc_messages = '{{ getenv "POSTGRES_LC_MESSAGES" "en_US.utf8" }}'			# locale for system error message
+#lc_messages = 'C'			# locale for system error message
 					# strings
-lc_monetary = '{{ getenv "POSTGRES_LC_MONETARY" "en_US.utf8" }}'			# locale for monetary formatting
-lc_numeric = '{{ getenv "POSTGRES_LC_NUMERIC" "en_US.utf8" }}'			# locale for number formatting
-lc_time = '{{ getenv "POSTGRES_LC_TIME" "en_US.utf8" }}'				# locale for time formatting
+#lc_monetary = 'C'			# locale for monetary formatting
+#lc_numeric = 'C'			# locale for number formatting
+#lc_time = 'C'				# locale for time formatting
 
 # default configuration for text search
-default_text_search_config = '{{ getenv "POSTGRES_DEFAULT_TEXT_SEARCH_CONFIG" "pg_catalog.english" }}'
+#default_text_search_config = 'pg_catalog.simple'
 
 # - Other Defaults -
 
 #dynamic_library_path = '$libdir'
 #local_preload_libraries = ''
+#session_preload_libraries = ''
 
 
 #------------------------------------------------------------------------------
@@ -531,11 +601,12 @@ default_text_search_config = '{{ getenv "POSTGRES_DEFAULT_TEXT_SEARCH_CONFIG" "p
 #deadlock_timeout = 1s
 #max_locks_per_transaction = 64		# min 10
 					# (change requires restart)
-# Note:  Each lock table slot uses ~270 bytes of shared memory, and there are
-# max_locks_per_transaction * (max_connections + max_prepared_transactions)
-# lock table slots.
 #max_pred_locks_per_transaction = 64	# min 10
 					# (change requires restart)
+#max_pred_locks_per_relation = -2	# negative values mean
+					# (max_pred_locks_per_transaction
+					#  / -max_pred_locks_per_relation) - 1
+#max_pred_locks_per_page = 2            # min 0
 
 
 #------------------------------------------------------------------------------
@@ -549,8 +620,8 @@ default_text_search_config = '{{ getenv "POSTGRES_DEFAULT_TEXT_SEARCH_CONFIG" "p
 #default_with_oids = off
 #escape_string_warning = on
 #lo_compat_privileges = off
+#operator_precedence_warning = off
 #quote_all_identifiers = off
-#sql_inheritance = on
 #standard_conforming_strings = on
 #synchronize_seqscans = on
 
@@ -565,6 +636,19 @@ default_text_search_config = '{{ getenv "POSTGRES_DEFAULT_TEXT_SEARCH_CONFIG" "p
 
 #exit_on_error = off			# terminate session on any error?
 #restart_after_crash = on		# reinitialize after backend crash?
+
+
+#------------------------------------------------------------------------------
+# CONFIG FILE INCLUDES
+#------------------------------------------------------------------------------
+
+# These options allow settings to be loaded from files other than the
+# default postgresql.conf.
+
+#include_dir = 'conf.d'			# include files ending in '.conf' from
+					# directory 'conf.d'
+#include_if_exists = 'exists.conf'	# include file only if it exists
+#include = 'special.conf'		# include file
 
 
 #------------------------------------------------------------------------------

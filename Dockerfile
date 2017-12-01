@@ -1,9 +1,14 @@
-FROM postgres:9.2.21-alpine
+ARG FROM_TAG
 
-ENV GOTPL_VER 0.1.5
-ENV POSTGRES_USER postgres
+FROM postgres:${FROM_TAG}
 
-RUN apk add --no-cache \
+ARG POSTGRES_VER
+
+ENV POSTGRES_VER="${POSTGRES_VER}" \
+    GOTPL_VER="0.1.5" \
+    POSTGRES_USER="postgres"
+
+RUN apk add --no-cache --virtual .postgres-run-deps \
         ca-certificates \
         make \
         pwgen \
@@ -14,9 +19,9 @@ RUN apk add --no-cache \
 
 COPY actions /usr/local/bin
 
-COPY *.tpl /etc/gotpl/
+COPY postgresql.conf.tpl /etc/gotpl/
 COPY docker-entrypoint.sh /
-COPY init /docker-entrypoint-initdb.d/
+COPY initdb.d /docker-entrypoint-initdb.d/
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["-c", "config_file=/etc/postgresql/postgresql.conf"]

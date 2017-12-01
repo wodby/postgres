@@ -3,26 +3,34 @@
 [![Build Status](https://travis-ci.org/wodby/postgres.svg?branch=master)](https://travis-ci.org/wodby/postgres)
 [![Docker Pulls](https://img.shields.io/docker/pulls/wodby/postgres.svg)](https://hub.docker.com/r/wodby/postgres)
 [![Docker Stars](https://img.shields.io/docker/stars/wodby/postgres.svg)](https://hub.docker.com/r/wodby/postgres)
+[![Docker Layers](https://images.microbadger.com/badges/image/wodby/postgres.svg)](https://microbadger.com/images/wodby/postgres)
 [![Wodby Slack](http://slack.wodby.com/badge.svg)](http://slack.wodby.com)
 
 ## Docker Images
 
-Images are based on [_/postgres](https://hub.docker.com/r/_/postgres/) images, built via [Travis CI](https://travis-ci.org/wodby/postgres) and published on [Docker Hub](https://hub.docker.com/r/wodby/postgres). 
+* All images are based on Alpine Linux
+* Base image: [_/postgres](https://hub.docker.com/r/_/postgres)
+* [Travis CI builds](https://travis-ci.org/wodby/postgres) 
+* [Docker Hub](https://hub.docker.com/r/wodby/postgres)
 
 ## Versions
 
-| PostgreSQL | Alpine Linux |
-| ---------- | ------------ |
-| [9.6.3](https://github.com/wodby/postgres/tree/master/9.6/Dockerfile)  | 3.5 |
-| [9.5.7](https://github.com/wodby/postgres/tree/master/9.5/Dockerfile)  | 3.5 |
-| [9.4.12](https://github.com/wodby/postgres/tree/master/9.4/Dockerfile) | 3.5 |
-| [9.3.17](https://github.com/wodby/postgres/tree/master/9.3/Dockerfile) | 3.5 |
-| [9.2.21](https://github.com/wodby/postgres/tree/master/9.2/Dockerfile) | 3.5 |
+[_(Dockerfile)_]: https://github.com/wodby/postgres/tree/master/Dockerfile
+
+Supported tags and respective `Dockerfile` links:
+
+* `10.1`, `latest` [_(Dockerfile)_]
+* `9.6` [_(Dockerfile)_]
+* `9.5` [_(Dockerfile)_]
+* `9.4` [_(Dockerfile)_]
+* `9.3` [_(Dockerfile)_]
+
+For better reliability we additionally release images with stability tags (`wodby/postgres:10.1-X.X.X`) which correspond to [git tags](https://github.com/wodby/postgres/releases). We **strongly recommend** using images only with stability tags. 
 
 ## Environment Variables
 
-| Variable | Default Value | Description |
-| -------- | --------------| ----------- |
+| Variable                              | Default Value      | Description        |
+| ------------------------------------- | ------------------ | ------------------ |
 | POSTGRES_CHECKPOINT_COMPLETION_TARGET | 0.7                |                    |
 | POSTGRES_CHECKPOINT_SEGMENTS          | 32                 | <=9.4              |
 | POSTGRES_DATESTYLE                    | iso, mdy           |                    |
@@ -56,7 +64,7 @@ make COMMAND [params ...]
  
 commands:
     import source=</path/to/dump.zip or http://example.com/url/to/dump.sql.gz> [user password db host  binary] 
-    backup filepath=</path/to/backup.sql.gz> [user password host db ignore=<"table1;table2">] 
+    backup filepath=</path/to/backup.sql.gz> [user password host db ignore=<"table1;table2"> nice ionice] 
     query query=<SELECT 1> [user password db host] 
     query-silent query=<SELECT 1> [user password db host]
     check-ready [user password db host max_try wait_seconds delay_seconds]  
@@ -71,25 +79,8 @@ default params values:
     delay_seconds 0
     ignore ""
     binary 0
-```
-
-Examples:
-
-```bash
-# Check if PostgreSQL is ready
-docker exec -ti [ID] make check-ready max_try=10 wait_seconds=5 delay_seconds=5 -f /usr/local/bin/actions.mk
-
-# Run query
-docker exec -ti [ID] make query query="CREATE TABLE test (a Numeric, b Numeric, c VARCHAR(255))" -f /usr/local/bin/actions.mk
-
-# Backup default database
-docker exec -ti [ID] make backup filepath="/path/to/mounted/dir/backup.sql.gz" -f /usr/local/bin/actions.mk
-
-# Import from file
-docker exec -ti [ID] make import source="/path/to/mounted/dir/export.sql.gz" -f /usr/local/bin/actions.mk
-
-# Import from URL
-docker exec -ti [ID] make import source="https://example.com/url/to/sql/dump.zip" -f /usr/local/bin/actions.mk
+    nice 10
+    ionice 7    
 ```
 
 ## Deployment
