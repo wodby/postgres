@@ -9,7 +9,13 @@ fi
 postgres_ver=$1
 postgres_major_ver=$2
 
-url="https://raw.githubusercontent.com/postgres/postgres/REL_${postgres_ver//./_}/src/backend/utils/misc/postgresql.conf.sample"
+if [[ "${postgres_ver}" =~ ^9 ]]; then
+    release="REL${postgres_ver//./_}"
+else
+    release="REL_${postgres_ver//./_}"
+fi
+
+url="https://raw.githubusercontent.com/postgres/postgres/${release}/src/backend/utils/misc/postgresql.conf.sample"
 
 outdated=0
 
