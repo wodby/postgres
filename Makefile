@@ -1,18 +1,20 @@
 -include env_make
 
 POSTGRES_VER ?= 10.1
-FROM_TAG = $(POSTGRES_VER)-alpine
+# 10.2 => 10, 9.6.3 => 9.6
+# http://www.databasesoup.com/2016/05/changing-postgresql-version-numbering.html
+POSTGRES_MAJOR_VER ?= $(shell echo "$(POSTGRES_VER)" | sed -E 's/.[0-9]+$$//')
 
-# Remove minor version from tag
-TAG ?= $(shell echo "${POSTGRES_VER}" | grep -oE '^[0-9]+\.[0-9]+?')
+TAG ?= $(POSTGRES_MAJOR_VER)
+BASE_IMAGE_TAG = $(POSTGRES_VER)-alpine
 
 REPO = wodby/postgres
-NAME = postgres-$(POSTGRES_VER)
+NAME = postgres-$(POSTGRES_MAJOR_VER)
 
 ifneq ($(STABILITY_TAG),)
-ifneq ($(TAG),latest)
-    override TAG := $(TAG)-$(STABILITY_TAG)
-endif
+    ifneq ($(TAG),latest)
+        override TAG := $(TAG)-$(STABILITY_TAG)
+    endif
 endif
 
 .PHONY: build test push shell run start stop logs clean release
@@ -20,7 +22,10 @@ endif
 default: build
 
 build:
-	docker build -t $(REPO):$(TAG) --build-arg FROM_TAG=$(FROM_TAG) --build-arg POSTGRES_VER=$(POSTGRES_VER) ./
+	docker build -t $(REPO):$(TAG) \
+		--build-arg BASE_IMAGE_TAG=$(BASE_IMAGE_TAG) \
+		--build-arg POSTGRES_VER=$(POSTGRES_VER) \
+		./
 
 test:
 	NAME=$(NAME) IMAGE=$(REPO):$(TAG) ./test.sh
@@ -45,5 +50,11 @@ logs:
 
 clean:
 	-docker rm -f $(NAME)
+
+compare-orig-configs:
+	docker run --rm \
+		-v $(PWD)/compare-orig-configs.sh:/usr/local/bin/compare-orig-configs.sh \
+		-v $(PWD)/orig:/orig \
+		wodby/alpine compare-orig-configs.sh $(POSTGRES_VER) $(POSTGRES_MAJOR_VER)
 
 release: build push

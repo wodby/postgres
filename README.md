@@ -4,22 +4,23 @@
 [![Docker Pulls](https://img.shields.io/docker/pulls/wodby/postgres.svg)](https://hub.docker.com/r/wodby/postgres)
 [![Docker Stars](https://img.shields.io/docker/stars/wodby/postgres.svg)](https://hub.docker.com/r/wodby/postgres)
 [![Docker Layers](https://images.microbadger.com/badges/image/wodby/postgres.svg)](https://microbadger.com/images/wodby/postgres)
-[![Wodby Slack](http://slack.wodby.com/badge.svg)](http://slack.wodby.com)
 
 ## Docker Images
+
+!!! For better reliability we release images with stability tags (`wodby/postgres:10-X.X.X`) which correspond to [git tags](https://github.com/wodby/postgres/releases). We **STRONGLY RECOMMEND** using images only with stability tags. 
+
+Overview:
 
 * All images are based on Alpine Linux
 * Base image: [_/postgres](https://hub.docker.com/r/_/postgres)
 * [Travis CI builds](https://travis-ci.org/wodby/postgres) 
 * [Docker Hub](https://hub.docker.com/r/wodby/postgres)
 
-## Versions
-
 [_(Dockerfile)_]: https://github.com/wodby/postgres/tree/master/Dockerfile
 
 Supported tags and respective `Dockerfile` links:
 
-* `10`, `10.1`, `latest` [_(Dockerfile)_]
+* `10`, `latest` [_(Dockerfile)_]
 * `9`, `9.6` [_(Dockerfile)_]
 * `9.5` [_(Dockerfile)_]
 * `9.4` [_(Dockerfile)_]
@@ -29,32 +30,32 @@ For better reliability we additionally release images with stability tags (`wodb
 
 ## Environment Variables
 
-| Variable                              | Default Value      | Description        |
-| ------------------------------------- | ------------------ | ------------------ |
-| POSTGRES_CHECKPOINT_COMPLETION_TARGET | 0.7                |                    |
-| POSTGRES_CHECKPOINT_SEGMENTS          | 32                 | <=9.4              |
-| POSTGRES_DATESTYLE                    | iso, mdy           |                    |
-| POSTGRES_DB                           | postgres           |                    |
-| POSTGRES_DEFAULT_STATISTICS_TARGET    | 100                |                    |
-| POSTGRES_DEFAULT_TEXT_SEARCH_CONFIG   | pg_catalog.english |                    |
-| POSTGRES_EFFECTIVE_CACHE_SIZE         | 1GB                |                    |
-| POSTGRES_DB_EXTENSIONS                |                    | Separated by comma |
-| POSTGRES_LC_MESSAGES                  | en_US.utf8         |                    |
-| POSTGRES_LC_MONETARY                  | en_US.utf8         |                    |
-| POSTGRES_LC_NUMERIC                   | en_US.utf8         |                    |
-| POSTGRES_LC_TIME                      | en_US.utf8         |                    |
-| POSTGRES_LOG_TIMEZONE                 | UTC                |                    |
-| POSTGRES_MAINTENANCE_WORK_MEM         | 128MB              |                    |
-| POSTGRES_MAX_CONNECTIONS              | 100                |                    |
-| POSTGRES_MAX_WAL_SIZE                 | 2GB                | >=9.5              |
-| POSTGRES_MIN_WAL_SIZE                 | 1GB                | >=9.5              |
-| POSTGRES_SHARED_BUFFERS               | 512MB              |                    |
-| POSTGRES_SHARED_MEMORY_TYPE           | posix              | >=9.4              |
-| POSTGRES_TIMEZONE                     | UTC                |                    |
-| POSTGRES_PASSWORD                     |                    | REQUIRED           |
-| POSTGRES_USER                         | postgres           |                    |
-| POSTGRES_WAL_BUFFERS                  | 16MB               |                    |
-| POSTGRES_WORK_MEM                     | 5MB                |                    |
+| Variable                                | Default Value        | Description        |
+| --------------------------------------- | -------------------- | ------------------ |
+| `POSTGRES_CHECKPOINT_COMPLETION_TARGET` | `0.7`                |                    |
+| `POSTGRES_CHECKPOINT_SEGMENTS`          | `32`                 | `<=9.4`            |
+| `POSTGRES_DATESTYLE`                    | `iso, mdy`           |                    |
+| `POSTGRES_DB`                           | `postgres`           |                    |
+| `POSTGRES_DEFAULT_STATISTICS_TARGET`    | `100`                |                    |
+| `POSTGRES_DEFAULT_TEXT_SEARCH_CONFIG`   | `pg_catalog.english` |                    |
+| `POSTGRES_EFFECTIVE_CACHE_SIZE`         | `1GB`                |                    |
+| `POSTGRES_DB_EXTENSIONS`                |                      | Separated by comma |
+| `POSTGRES_LC_MESSAGES`                  | `en_US.utf8`         |                    |
+| `POSTGRES_LC_MONETARY`                  | `en_US.utf8`         |                    |
+| `POSTGRES_LC_NUMERIC`                   | `en_US.utf8`         |                    |
+| `POSTGRES_LC_TIME`                      | `en_US.utf8`         |                    |
+| `POSTGRES_LOG_TIMEZONE`                 | `UTC`                |                    |
+| `POSTGRES_MAINTENANCE_WORK_MEM`         | `128MB`              |                    |
+| `POSTGRES_MAX_CONNECTIONS`              | `100`                |                    |
+| `POSTGRES_MAX_WAL_SIZE`                 | `2GB`                | `>=9.5`            |
+| `POSTGRES_MIN_WAL_SIZE`                 | `1GB`                | `>=9.5`            |
+| `POSTGRES_SHARED_BUFFERS`               | `512MB`              |                    |
+| `POSTGRES_SHARED_MEMORY_TYPE`           | `posix`              | `>=9.4`            |
+| `POSTGRES_TIMEZONE`                     | `UTC`                |                    |
+| `POSTGRES_PASSWORD`                     |                      | REQUIRED           |
+| `POSTGRES_USER`                         | `postgres`           |                    |
+| `POSTGRES_WAL_BUFFERS`                  | `16MB`               |                    |
+| `POSTGRES_WORK_MEM`                     | `5MB`                |                    |
 
 ## Orchestration Actions
 

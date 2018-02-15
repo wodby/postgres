@@ -1,48 +1,29 @@
 language: bash
 
-sudo: required
-
 services:
   - docker
 
 env:
   global:
-    - DOCKER_VERSION=17.06.2
-    - LATEST_TAG=10.2
+    - LATEST_TAG=10
   matrix:
-    - TAG=10.1 POSTGRES_VER=10.1 EXTRA_TAG=10
+    - TAG=10  POSTGRES_VER=10.1 EXTRA_TAG=10
     - TAG=9.6 POSTGRES_VER=9.6.6 EXTRA_TAG=9
     - TAG=9.5 POSTGRES_VER=9.5.10
     - TAG=9.4 POSTGRES_VER=9.4.15
     - TAG=9.3 POSTGRES_VER=9.3.20
 
-install:
-  - sudo apt-get update
-  - sudo apt-get -y -o Dpkg::Options::="--force-confnew" install docker-ce="${DOCKER_VERSION}~ce-0~ubuntu"
-
 script:
-  - make && make test
+  - set -e
+  - make compare-orig-configs
+  - make
+  - make test
 
-after_success: |
-  if [[ "${TRAVIS_PULL_REQUEST}" == "false" && ("${TRAVIS_BRANCH}" == "master"  || -n "${TRAVIS_TAG}") ]]; then
-    docker login -u "${DOCKER_USERNAME}" -p "${DOCKER_PASSWORD}"
-
-    if [[ -n "${TRAVIS_TAG}" ]]; then
-      export STABILITY_TAG="${TRAVIS_TAG}"
-    fi
-
-    make release
-
-    if [[ -n "${EXTRA_TAG}" ]]; then
-      make release TAG="${EXTRA_TAG}"
-    fi
-
-    if [[ "${TAG}" == "${LATEST_TAG}" ]]; then
-      make release TAG="latest"
-    fi
-  fi
+after_success:
+  - bash "${TRAVIS_BUILD_DIR}/travis-release.sh"
 
 notifications:
   slack:
     on_failure: never
-    secure: "I/iMROyGaPzjO3/dMbpPxKwMFQnVEkYbr6P9eNXii50fGwK7UPnf13SvY70bQSwi8BHxJ90LZXdoj4Qg8JD+1PFTrcImGYqAn8fNmZEFD5YJjmFcRjVZ+/mulnsxoLm5us4QqA0oR9WEIVx7Rxv04doRlHL6x4FMn5IBwcIigLjFe6K3vyhK7Bt1nJnKSJxnHFYOWnAx9IYos9H+KepXTRa857HEfbzCNexpJgCiRy3uunVq8p5Sj0lUedkwpBWY4jdY4dEIz6y01mQcsT87V7JYsqFugMwGXY5uBfAG7Ru/Qoq8HpfnwzKsIgVJTwVnkS+WgBgaBJjfgisavJXZDR6tfjbqyF1w+M3hu34aXTMNsGJwuAXTxDUlpm/4c+cG9yD+zPA9Jo6+hhX68xw6LgZRopb+SLZ6W1rLbS85s2STTj6y/gyrPh2T6mwOyv+P8gOoLGxXYDKa8O8XYTZxBgFYHmNjY20fKHkWU1Tn2kOZ1rAnpCrYB0NQboyToJfJqoFpzQ6RGOoCUFnTEeZEXrGAMLpm4qJSmlb3GvH4jM+4+U9O50codgFyZdYipTvL2aH/zaaDzAu4RdQBleRQJEKuLEg/G3SEmgl7LZ6tI97StjJoZXOphW1VCWab81wyjoK91oga6csP+CvH/cU0EGngmQWWC7ESNA3KNR6YVx4="
+    secure: |
+      I/iMROyGaPzjO3/dMbpPxKwMFQnVEkYbr6P9eNXii50fGwK7UPnf13SvY70bQSwi8BHxJ90LZXdoj4Qg8JD+1PFTrcImGYqAn8fNmZEFD5YJjmFcRjVZ+/mulnsxoLm5us4QqA0oR9WEIVx7Rxv04doRlHL6x4FMn5IBwcIigLjFe6K3vyhK7Bt1nJnKSJxnHFYOWnAx9IYos9H+KepXTRa857HEfbzCNexpJgCiRy3uunVq8p5Sj0lUedkwpBWY4jdY4dEIz6y01mQcsT87V7JYsqFugMwGXY5uBfAG7Ru/Qoq8HpfnwzKsIgVJTwVnkS+WgBgaBJjfgisavJXZDR6tfjbqyF1w+M3hu34aXTMNsGJwuAXTxDUlpm/4c+cG9yD+zPA9Jo6+hhX68xw6LgZRopb+SLZ6W1rLbS85s2STTj6y/gyrPh2T6mwOyv+P8gOoLGxXYDKa8O8XYTZxBgFYHmNjY20fKHkWU1Tn2kOZ1rAnpCrYB0NQboyToJfJqoFpzQ6RGOoCUFnTEeZEXrGAMLpm4qJSmlb3GvH4jM+4+U9O50codgFyZdYipTvL2aH/zaaDzAu4RdQBleRQJEKuLEg/G3SEmgl7LZ6tI97StjJoZXOphW1VCWab81wyjoK91oga6csP+CvH/cU0EGngmQWWC7ESNA3KNR6YVx4=
