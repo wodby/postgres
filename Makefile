@@ -26,6 +26,7 @@ build:
 	docker build -t $(REPO):$(TAG) \
 		--build-arg BASE_IMAGE_TAG=$(BASE_IMAGE_TAG) \
 		--build-arg POSTGRES_VER=$(POSTGRES_VER) \
+		--build-arg POSTGRES_MAJOR_VER=$(POSTGRES_MAJOR_VER) \
 		./
 
 test:

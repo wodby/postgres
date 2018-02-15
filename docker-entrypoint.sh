@@ -6,8 +6,6 @@ if [[ -n "${DEBUG}" ]]; then
     set -x
 fi
 
-POSTGRES_MINOR_VER=$(echo "${POSTGRES_VER}" | grep -oE '^[0-9]+\.[0-9]+?')
-
 if [[ -z "${POSTGRES_PASSWORD}" ]]; then
     echo "Environment variable POSTGRES_PASSWORD is required. Exiting."
     exit 1
@@ -18,7 +16,7 @@ if [[ -z "${POSTGRES_DB}" ]]; then
 fi
 
 mkdir -p /etc/postgresql/
-gotpl "/etc/gotpl/postgresql-${POSTGRES_MINOR_VER}.conf.tpl" > "/etc/postgresql/postgresql.conf"
+gotpl "/etc/gotpl/postgresql-${POSTGRES_MAJOR_VER}.conf.tpl" > "/etc/postgresql/postgresql.conf"
 
 if [[ $1 == 'make' ]]; then
     exec "${@}" -f /usr/local/bin/actions.mk
