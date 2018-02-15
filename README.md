@@ -33,7 +33,7 @@ For better reliability we additionally release images with stability tags (`wodb
 | Variable                                | Default Value        | Description        |
 | --------------------------------------- | -------------------- | ------------------ |
 | `POSTGRES_CHECKPOINT_COMPLETION_TARGET` | `0.7`                |                    |
-| `POSTGRES_CHECKPOINT_SEGMENTS`          | `32`                 | `<=9.4`            |
+| `POSTGRES_CHECKPOINT_SEGMENTS`          | `32`                 | <=9.4              |
 | `POSTGRES_DATESTYLE`                    | `iso, mdy`           |                    |
 | `POSTGRES_DB`                           | `postgres`           |                    |
 | `POSTGRES_DEFAULT_STATISTICS_TARGET`    | `100`                |                    |
@@ -47,10 +47,10 @@ For better reliability we additionally release images with stability tags (`wodb
 | `POSTGRES_LOG_TIMEZONE`                 | `UTC`                |                    |
 | `POSTGRES_MAINTENANCE_WORK_MEM`         | `128MB`              |                    |
 | `POSTGRES_MAX_CONNECTIONS`              | `100`                |                    |
-| `POSTGRES_MAX_WAL_SIZE`                 | `2GB`                | `>=9.5`            |
-| `POSTGRES_MIN_WAL_SIZE`                 | `1GB`                | `>=9.5`            |
+| `POSTGRES_MAX_WAL_SIZE`                 | `2GB`                | >=9.5              |
+| `POSTGRES_MIN_WAL_SIZE`                 | `1GB`                | >=9.5              |
 | `POSTGRES_SHARED_BUFFERS`               | `512MB`              |                    |
-| `POSTGRES_SHARED_MEMORY_TYPE`           | `posix`              | `>=9.4`            |
+| `POSTGRES_SHARED_MEMORY_TYPE`           | `posix`              | >=9.4              |
 | `POSTGRES_TIMEZONE`                     | `UTC`                |                    |
 | `POSTGRES_PASSWORD`                     |                      | REQUIRED           |
 | `POSTGRES_USER`                         | `postgres`           |                    |
