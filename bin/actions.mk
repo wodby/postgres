@@ -23,11 +23,11 @@ default: query
 
 import:
 	$(call check_defined, source)
-	import.sh $(user) $(password) $(host) $(db) $(source) $(binary)
+	import $(user) $(password) $(host) $(db) $(source) $(binary)
 
 backup:
 	$(call check_defined, filepath)
-	backup.sh $(user) $(password) $(host) $(db) $(filepath) "$(ignore)" $(nice) $(ionice)
+	backup $(user) $(password) $(host) $(db) $(filepath) "$(ignore)" $(nice) $(ionice)
 
 query:
 	$(call check_defined, query)
@@ -38,7 +38,7 @@ query-silent:
 	@PGPASSWORD=$(password) psql -tA -U$(user) -h$(host) -d$(db) -c "$(query)"
 
 check-ready:
-	wait-for-postgres.sh $(user) $(password) $(db) $(host) $(max_try) $(wait_seconds) $(delay_seconds)
+	wait_for_postgres $(user) $(password) $(db) $(host) $(max_try) $(wait_seconds) $(delay_seconds)
 
 check-live:
 	@echo "OK"

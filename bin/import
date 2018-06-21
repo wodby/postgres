@@ -14,7 +14,7 @@ source=$5
 binary=$6
 tmp_dir="/tmp/import"
 
-get-archive.sh "${source}" "${tmp_dir}" "zip tgz tar.gz gz"
+get_archive "${source}" "${tmp_dir}" "zip tgz tar.gz gz"
 
 dump_file=$(find "${tmp_dir}" -type f)
 count=$(echo "${dump_file}" | wc -l | grep -Eo '[0-9]+')

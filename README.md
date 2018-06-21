@@ -7,7 +7,7 @@
 
 ## Docker Images
 
-!!! For better reliability we release images with stability tags (`wodby/postgres:10-X.X.X`) which correspond to [git tags](https://github.com/wodby/postgres/releases). We **STRONGLY RECOMMEND** using images only with stability tags. 
+❗For better reliability we release images with stability tags (`wodby/postgres:10-X.X.X`) which correspond to [git tags](https://github.com/wodby/postgres/releases). We strongly recommend using images only with stability tags. 
 
 Overview:
 
@@ -21,12 +21,10 @@ Overview:
 Supported tags and respective `Dockerfile` links:
 
 * `10`, `latest` [_(Dockerfile)_]
-* `9`, `9.6` [_(Dockerfile)_]
+* `9.6`, `9` [_(Dockerfile)_]
 * `9.5` [_(Dockerfile)_]
 * `9.4` [_(Dockerfile)_]
 * `9.3` [_(Dockerfile)_]
-
-For better reliability we additionally release images with stability tags (`wodby/postgres:10.1-X.X.X`) which correspond to [git tags](https://github.com/wodby/postgres/releases). We **strongly recommend** using images only with stability tags. 
 
 ## Environment Variables
 
