@@ -9,7 +9,7 @@ env:
     - POSTGRES_VER=9.6.10 TAGS=9.6,9
     - POSTGRES_VER=9.5.14 TAGS=9.5
     - POSTGRES_VER=9.4.19 TAGS=9.4
-    - POSTGRES_VER=9.3.23 TAGS=9.3
+    - POSTGRES_VER=9.3.24 TAGS=9.3
 
 script:
   - set -e
