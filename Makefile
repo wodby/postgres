@@ -54,9 +54,6 @@ clean:
 	-docker rm -f $(NAME)
 
 check-configs:
-	docker run --rm \
-		-v $(PWD)/compare-orig-configs.sh:/usr/local/bin/check-configs.sh \
-		-v $(PWD)/orig:/orig \
-		wodby/alpine check-configs.sh $(POSTGRES_VER) $(POSTGRES_MAJOR_VER)
+	./check-configs.sh $(POSTGRES_VER) $(POSTGRES_MAJOR_VER)
 
 release: build push
