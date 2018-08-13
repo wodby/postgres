@@ -53,10 +53,10 @@ logs:
 clean:
 	-docker rm -f $(NAME)
 
-compare-orig-configs:
+check-configs:
 	docker run --rm \
 		-v $(PWD)/compare-orig-configs.sh:/usr/local/bin/check-configs.sh \
 		-v $(PWD)/orig:/orig \
-		wodby/alpine compare-orig-configs.sh $(POSTGRES_VER) $(POSTGRES_MAJOR_VER)
+		wodby/alpine check-configs.sh $(POSTGRES_VER) $(POSTGRES_MAJOR_VER)
 
 release: build push

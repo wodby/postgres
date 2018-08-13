@@ -13,7 +13,7 @@ env:
 
 script:
   - set -e
-  - make compare-orig-configs
+  - make check-configs
   - make
   - make test
 
