@@ -30,7 +30,7 @@ build:
 		./
 
 test:
-	NAME=$(NAME) IMAGE=$(REPO):$(TAG) ./test.sh
+	cd ./tests && NAME=$(NAME) IMAGE=$(REPO):$(TAG) ./run.sh
 
 push:
 	docker push $(REPO):$(TAG)
@@ -55,7 +55,7 @@ clean:
 
 compare-orig-configs:
 	docker run --rm \
-		-v $(PWD)/compare-orig-configs.sh:/usr/local/bin/compare-orig-configs.sh \
+		-v $(PWD)/compare-orig-configs.sh:/usr/local/bin/check-configs.sh \
 		-v $(PWD)/orig:/orig \
 		wodby/alpine compare-orig-configs.sh $(POSTGRES_VER) $(POSTGRES_MAJOR_VER)
 
