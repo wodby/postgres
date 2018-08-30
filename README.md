@@ -84,4 +84,4 @@ default params values:
 
 ## Deployment
 
-Deploy PostgreSQL to your server via [![Wodby](https://www.google.com/s2/favicons?domain=wodby.com) Wodby](https://cloud.wodby.com/stackhub/68172333-6d47-46e0-afd9-08c2170a73b0).
+Deploy PostgreSQL to your server via [![Wodby](https://www.google.com/s2/favicons?domain=wodby.com) Wodby](https://wodby.com/stacks/postgres).
