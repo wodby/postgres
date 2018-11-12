@@ -1,8 +1,0 @@
-tests
-.gitignore
-.postgres
-.travis.yml
-check-configs.sh
-Makefile
-README.md
-release.sh
