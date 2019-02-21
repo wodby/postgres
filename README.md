@@ -25,7 +25,6 @@ Supported tags and respective `Dockerfile` links:
 * `9.6`, `9` [_(Dockerfile)_]
 * `9.5` [_(Dockerfile)_]
 * `9.4` [_(Dockerfile)_]
-* `9.3` [_(Dockerfile)_]
 
 ## Environment Variables
 
