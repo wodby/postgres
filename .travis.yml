@@ -12,8 +12,8 @@ env:
     - POSTGRES_VER=9.4.21 TAGS=9.4
 
 script:
-  - set -e
   - make check-configs
+  - set -e
   - make
   - make test
 
