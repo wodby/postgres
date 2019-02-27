@@ -1,21 +1,21 @@
 language: bash
 
 services:
-  - docker
+- docker
 
 env:
   matrix:
-    - POSTGRES_VER=11.2 TAGS=11,latest
-    - POSTGRES_VER=10.7 TAGS=10
-    - POSTGRES_VER=9.6.12 TAGS=9.6,9
-    - POSTGRES_VER=9.5.16 TAGS=9.5
-    - POSTGRES_VER=9.4.21 TAGS=9.4
+  - POSTGRES_VER=11.2 TAGS=11,latest
+  - POSTGRES_VER=10.7 TAGS=10
+  - POSTGRES_VER=9.6.12 TAGS=9.6,9
+  - POSTGRES_VER=9.5.16 TAGS=9.5
+  - POSTGRES_VER=9.4.21 TAGS=9.4
 
 script:
-  - make check-configs
-  - set -e
-  - make
-  - make test
+- set -e
+- make check-configs
+- make
+- make test
 
 after_success:
-  - . "${TRAVIS_BUILD_DIR}/release.sh"
+- . "${TRAVIS_BUILD_DIR}/release.sh"
