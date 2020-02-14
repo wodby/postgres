@@ -5,7 +5,7 @@ services:
 
 env:
   matrix:
-  - POSTGRES_VER=12.1 TAGS=12,latest
+  - POSTGRES_VER=12.2 TAGS=12,latest
   - POSTGRES_VER=11.6 TAGS=11
   - POSTGRES_VER=10.11 TAGS=10
   - POSTGRES_VER=9.6.16 TAGS=9.6,9
