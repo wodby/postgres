@@ -1,6 +1,6 @@
 # PostgreSQL Docker Container Image
 
-[![Build Status](https://travis-ci.org/wodby/postgres.svg?branch=master)](https://travis-ci.org/wodby/postgres)
+[![Build Status](https://github.com/wodby/postgres/workflows/Build%20docker%20image/badge.svg)](https://github.com/wodby/postgres/actions)
 [![Docker Pulls](https://img.shields.io/docker/pulls/wodby/postgres.svg)](https://hub.docker.com/r/wodby/postgres)
 [![Docker Stars](https://img.shields.io/docker/stars/wodby/postgres.svg)](https://hub.docker.com/r/wodby/postgres)
 [![Docker Layers](https://images.microbadger.com/badges/image/wodby/postgres.svg)](https://microbadger.com/images/wodby/postgres)
@@ -11,21 +11,21 @@
 
 Overview:
 
-* All images are based on Alpine Linux
-* Base image: [_/postgres](https://hub.docker.com/r/_/postgres)
-* [Travis CI builds](https://travis-ci.org/wodby/postgres) 
-* [Docker Hub](https://hub.docker.com/r/wodby/postgres)
+- All images based on Alpine Linux
+- Base image: [_/postgres](https://hub.docker.com/r/_/postgres)
+- [GitHub actions builds](https://github.com/wodby/postgres/actions) 
+- [Docker Hub](https://hub.docker.com/r/wodby/postgres)
 
 [_(Dockerfile)_]: https://github.com/wodby/postgres/tree/master/Dockerfile
 
 Supported tags and respective `Dockerfile` links:
 
-* `12`, `latest` [_(Dockerfile)_]
-* `11` [_(Dockerfile)_]
-* `10` [_(Dockerfile)_]
-* `9.6`, `9` [_(Dockerfile)_]
-* `9.5` [_(Dockerfile)_]
-* `9.4` [_(Dockerfile)_]
+- `12`, `latest` [_(Dockerfile)_]
+- `11` [_(Dockerfile)_]
+- `10` [_(Dockerfile)_]
+- `9.6`, `9` [_(Dockerfile)_]
+- `9.5` [_(Dockerfile)_]
+- `9.4` [_(Dockerfile)_]
 
 ## Environment Variables
 
