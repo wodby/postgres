@@ -25,8 +25,8 @@ Supported tags and respective `Dockerfile` links:
 - `11` [_(Dockerfile)_]
 - `10` [_(Dockerfile)_]
 - `9.6`, `9` [_(Dockerfile)_]
-- `9.5` [_(Dockerfile)_]
-- `9.4` [_(Dockerfile)_]
+
+All images built for `linux/amd64` and `linux/arm64`
 
 ## Environment Variables
 
