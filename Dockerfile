@@ -5,7 +5,7 @@ FROM postgres:${BASE_IMAGE_TAG}
 ARG POSTGRES_VER
 ARG POSTGRES_MAJOR_VER
 
-ARG BUILDPLATFORM
+ARG TARGETPLATFORM
 
 ENV POSTGRES_VER="${POSTGRES_VER}" \
     # Major version: 10.2 => 10, 9.6.3 => 9.6
@@ -20,8 +20,8 @@ RUN apk add --no-cache -t .postgres-run-deps \
         tar \
         wget; \
     \
-    dockerplatform=${BUILDPLATFORM:-linux/amd64};\
-    gotpl_url="https://github.com/wodby/gotpl/releases/download/0.2.1/gotpl-${dockerplatform/\//-}.tar.gz"; \
+    dockerplatform=${TARGETPLATFORM:-linux/amd64};\
+    gotpl_url="https://github.com/wodby/gotpl/releases/download/0.3.3/gotpl-${dockerplatform/\//-}.tar.gz"; \
     wget -qO- "${gotpl_url}" | tar xz --no-same-owner -C /usr/local/bin
 
 COPY bin /usr/local/bin
