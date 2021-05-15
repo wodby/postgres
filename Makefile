@@ -1,6 +1,6 @@
 -include env_make
 
-POSTGRES_VER ?= 13.2
+POSTGRES_VER ?= 13.3
 
 # 10.2 => 10, 9.6.3 => 9.6
 # http://www.databasesoup.com/2016/05/changing-postgresql-version-numbering.html
