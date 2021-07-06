@@ -7,7 +7,6 @@ POSTGRES_VER ?= 13.3
 POSTGRES_MAJOR_VER ?= $(shell echo "$(POSTGRES_VER)" | sed -E 's/.[0-9]+$$//')
 
 TAG ?= $(POSTGRES_MAJOR_VER)
-BASE_IMAGE_TAG = $(POSTGRES_VER)-alpine
 
 PLATFORM ?= linux/amd64
 
@@ -26,7 +25,6 @@ default: build
 
 build:
 	docker build -t $(REPO):$(TAG) \
-		--build-arg BASE_IMAGE_TAG=$(BASE_IMAGE_TAG) \
 		--build-arg POSTGRES_VER=$(POSTGRES_VER) \
 		--build-arg POSTGRES_MAJOR_VER=$(POSTGRES_MAJOR_VER) \
 		./
@@ -35,7 +33,6 @@ build:
 # we need to save cache to run tests first.
 buildx-build-amd64:
 	docker buildx build --platform linux/amd64 -t $(REPO):$(TAG) \
-		--build-arg BASE_IMAGE_TAG=$(BASE_IMAGE_TAG) \
 		--build-arg POSTGRES_VER=$(POSTGRES_VER) \
 		--build-arg POSTGRES_MAJOR_VER=$(POSTGRES_MAJOR_VER) \
 		--load \
@@ -43,14 +40,12 @@ buildx-build-amd64:
 
 buildx-build:
 	docker buildx build --platform $(PLATFORM) -t $(REPO):$(TAG) \
-		--build-arg BASE_IMAGE_TAG=$(BASE_IMAGE_TAG) \
 		--build-arg POSTGRES_VER=$(POSTGRES_VER) \
 		--build-arg POSTGRES_MAJOR_VER=$(POSTGRES_MAJOR_VER) \
 		./
 
 buildx-push:
 	docker buildx build --platform $(PLATFORM) --push -t $(REPO):$(TAG) \
-		--build-arg BASE_IMAGE_TAG=$(BASE_IMAGE_TAG) \
 		--build-arg POSTGRES_VER=$(POSTGRES_VER) \
 		--build-arg POSTGRES_MAJOR_VER=$(POSTGRES_MAJOR_VER) \
 		./
