@@ -13,7 +13,8 @@ ENV POSTGRES_VER="${POSTGRES_VER}" \
     POSTGRES_MAJOR_VER="${POSTGRES_MAJOR_VER}" \
     POSTGRES_USER="postgres"
 
-RUN apk add --no-cache -t .postgres-run-deps \
+RUN set -ex; \
+    apk add --no-cache -t .postgres-run-deps \
         ca-certificates \
         make \
         pwgen \
