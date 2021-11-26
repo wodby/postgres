@@ -12,7 +12,7 @@
 Overview:
 
 - All images based on Alpine Linux
-- Base image: [_/postgres](https://hub.docker.com/r/_/postgres)
+- Base image: [wodby/base-postgres](https://github.com/wodby/base-postgres)
 - [GitHub actions builds](https://github.com/wodby/postgres/actions) 
 - [Docker Hub](https://hub.docker.com/r/wodby/postgres)
 
