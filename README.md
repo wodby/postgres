@@ -7,7 +7,7 @@
 
 ## Docker Images
 
-❗For better reliability we release images with stability tags (`wodby/postgres:13-X.X.X`) which correspond to [git tags](https://github.com/wodby/postgres/releases). We strongly recommend using images only with stability tags. 
+❗For better reliability we release images with stability tags (`wodby/postgres:14-X.X.X`) which correspond to [git tags](https://github.com/wodby/postgres/releases). We strongly recommend using images only with stability tags. 
 
 Overview:
 
@@ -20,7 +20,8 @@ Overview:
 
 Supported tags and respective `Dockerfile` links:
 
-- `13`, `latest` [_(Dockerfile)_]
+- `14`, `latest` [_(Dockerfile)_]
+- `13` [_(Dockerfile)_]
 - `12` [_(Dockerfile)_]
 - `11` [_(Dockerfile)_]
 - `10` [_(Dockerfile)_]
