@@ -36,7 +36,7 @@ jobs:
     - uses: docker/setup-buildx-action@v1
     - uses: ./.github/actions
       with:
-        version: '13.5'
+        version: '13.6'
         tags: 13
         platform: linux/amd64,linux/arm64
   postgres-12:
