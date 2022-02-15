@@ -3,7 +3,6 @@
 [![Build Status](https://github.com/wodby/postgres/workflows/Build%20docker%20image/badge.svg)](https://github.com/wodby/postgres/actions)
 [![Docker Pulls](https://img.shields.io/docker/pulls/wodby/postgres.svg)](https://hub.docker.com/r/wodby/postgres)
 [![Docker Stars](https://img.shields.io/docker/stars/wodby/postgres.svg)](https://hub.docker.com/r/wodby/postgres)
-[![Docker Layers](https://images.microbadger.com/badges/image/wodby/postgres.svg)](https://microbadger.com/images/wodby/postgres)
 
 ## Docker Images
 
@@ -25,14 +24,13 @@ Supported tags and respective `Dockerfile` links:
 - `12` [_(Dockerfile)_]
 - `11` [_(Dockerfile)_]
 - `10` [_(Dockerfile)_]
-- `9.6`, `9` [_(Dockerfile)_]
 
 All images built for `linux/amd64` and `linux/arm64`
 
 ## Environment Variables
 
 | Variable                                | Default Value        | Description        |
-| --------------------------------------- | -------------------- | ------------------ |
+|-----------------------------------------|----------------------|--------------------|
 | `POSTGRES_CHECKPOINT_COMPLETION_TARGET` | `0.7`                |                    |
 | `POSTGRES_CHECKPOINT_SEGMENTS`          | `32`                 | <=9.4              |
 | `POSTGRES_DATESTYLE`                    | `iso, mdy`           |                    |
