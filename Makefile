@@ -6,6 +6,7 @@ POSTGRES_VER ?= 14.2
 # http://www.databasesoup.com/2016/05/changing-postgresql-version-numbering.html
 POSTGRES_MAJOR_VER ?= $(shell echo "$(POSTGRES_VER)" | sed -E 's/.[0-9]+$$//')
 
+ALPINE_VER ?= 3.15
 TAG ?= $(POSTGRES_MAJOR_VER)
 
 PLATFORM ?= linux/amd64
@@ -27,6 +28,7 @@ build:
 	docker build -t $(REPO):$(TAG) \
 		--build-arg POSTGRES_VER=$(POSTGRES_VER) \
 		--build-arg POSTGRES_MAJOR_VER=$(POSTGRES_MAJOR_VER) \
+		--build-arg ALPINE_VER=$(ALPINE_VER) \
 		./
 
 # --load doesn't work with multiple platforms https://github.com/docker/buildx/issues/59
@@ -35,6 +37,7 @@ buildx-build-amd64:
 	docker buildx build --platform linux/amd64 -t $(REPO):$(TAG) \
 		--build-arg POSTGRES_VER=$(POSTGRES_VER) \
 		--build-arg POSTGRES_MAJOR_VER=$(POSTGRES_MAJOR_VER) \
+		--build-arg ALPINE_VER=$(ALPINE_VER) \
 		--load \
 		./
 
@@ -42,12 +45,14 @@ buildx-build:
 	docker buildx build --platform $(PLATFORM) -t $(REPO):$(TAG) \
 		--build-arg POSTGRES_VER=$(POSTGRES_VER) \
 		--build-arg POSTGRES_MAJOR_VER=$(POSTGRES_MAJOR_VER) \
+		--build-arg ALPINE_VER=$(ALPINE_VER) \
 		./
 
 buildx-push:
 	docker buildx build --platform $(PLATFORM) --push -t $(REPO):$(TAG) \
 		--build-arg POSTGRES_VER=$(POSTGRES_VER) \
 		--build-arg POSTGRES_MAJOR_VER=$(POSTGRES_MAJOR_VER) \
+		--build-arg ALPINE_VER=$(ALPINE_VER) \
 		./
 
 test:

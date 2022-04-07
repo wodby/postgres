@@ -24,6 +24,11 @@ Supported tags and respective `Dockerfile` links:
 - `12` [_(Dockerfile)_]
 - `11` [_(Dockerfile)_]
 - `10` [_(Dockerfile)_]
+- `14-alpine3.13`, `alpine3.13` [_(Dockerfile)_]
+- `13-alpine3.13` [_(Dockerfile)_]
+- `12-alpine3.13` [_(Dockerfile)_]
+- `11-alpine3.13` [_(Dockerfile)_]
+- `10-alpine3.13` [_(Dockerfile)_]
 
 All images built for `linux/amd64` and `linux/arm64`
 
