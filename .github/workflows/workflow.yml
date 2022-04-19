@@ -31,7 +31,6 @@ jobs:
         version: ${{ env.POSTGRES14 }}
         tags: 14,latest
         platform: linux/amd64,linux/arm64
-        alpine_ver: 3.15
   postgres-13:
     runs-on: ubuntu-latest
     steps:
@@ -45,7 +44,6 @@ jobs:
         version: ${{ env.POSTGRES13 }}
         tags: 13
         platform: linux/amd64,linux/arm64
-        alpine_ver: 3.15
   postgres-12:
     runs-on: ubuntu-latest
     steps:
@@ -59,7 +57,6 @@ jobs:
         version: ${{ env.POSTGRES12 }}
         tags: 12
         platform: linux/amd64,linux/arm64
-        alpine_ver: 3.15
   postgres-11:
     runs-on: ubuntu-latest
     steps:
@@ -73,7 +70,6 @@ jobs:
         version: ${{ env.POSTGRES11 }}
         tags: 11
         platform: linux/amd64,linux/arm64
-        alpine_ver: 3.15
   postgres-10:
     runs-on: ubuntu-latest
     steps:
@@ -87,74 +83,3 @@ jobs:
         version: ${{ env.POSTGRES10 }}
         tags: 10
         platform: linux/amd64,linux/arm64
-        alpine_ver: 3.15
-  postgres-14-alpine313:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    - uses: docker/setup-qemu-action@v1
-      with:
-        platforms: amd64,arm64
-    - uses: docker/setup-buildx-action@v1
-    - uses: ./.github/actions
-      with:
-        version: ${{ env.POSTGRES14 }}
-        tags: 14-alpine3.13,alpine3.13
-        platform: linux/amd64,linux/arm64
-        alpine_ver: 3.13
-  postgres-13-alpine313:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    - uses: docker/setup-qemu-action@v1
-      with:
-        platforms: amd64,arm64
-    - uses: docker/setup-buildx-action@v1
-    - uses: ./.github/actions
-      with:
-        version: ${{ env.POSTGRES13 }}
-        tags: 13-alpine3.13
-        platform: linux/amd64,linux/arm64
-        alpine_ver: 3.13
-  postgres-12-alpine313:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    - uses: docker/setup-qemu-action@v1
-      with:
-        platforms: amd64,arm64
-    - uses: docker/setup-buildx-action@v1
-    - uses: ./.github/actions
-      with:
-        version: ${{ env.POSTGRES12 }}
-        tags: 12-alpine3.13
-        platform: linux/amd64,linux/arm64
-        alpine_ver: 3.13
-  postgres-11-alpine313:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    - uses: docker/setup-qemu-action@v1
-      with:
-        platforms: amd64,arm64
-    - uses: docker/setup-buildx-action@v1
-    - uses: ./.github/actions
-      with:
-        version: ${{ env.POSTGRES11 }}
-        tags: 11-alpine3.13
-        platform: linux/amd64,linux/arm64
-        alpine_ver: 3.13
-  postgres-10-alpine313:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    - uses: docker/setup-qemu-action@v1
-      with:
-        platforms: amd64,arm64
-    - uses: docker/setup-buildx-action@v1
-    - uses: ./.github/actions
-      with:
-        version: ${{ env.POSTGRES10 }}
-        tags: 10-alpine3.13
-        platform: linux/amd64,linux/arm64
-        alpine_ver: 3.13

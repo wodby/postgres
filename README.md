@@ -11,7 +11,7 @@
 Overview:
 
 - All images based on Alpine Linux
-- Base image: [wodby/base-postgres](https://github.com/wodby/base-postgres)
+- Base image: [postgres](https://github.com/docker-library/postgres)
 - [GitHub actions builds](https://github.com/wodby/postgres/actions) 
 - [Docker Hub](https://hub.docker.com/r/wodby/postgres)
 
@@ -24,11 +24,6 @@ Supported tags and respective `Dockerfile` links:
 - `12` [_(Dockerfile)_]
 - `11` [_(Dockerfile)_]
 - `10` [_(Dockerfile)_]
-- `14-alpine3.13`, `alpine3.13` [_(Dockerfile)_]
-- `13-alpine3.13` [_(Dockerfile)_]
-- `12-alpine3.13` [_(Dockerfile)_]
-- `11-alpine3.13` [_(Dockerfile)_]
-- `10-alpine3.13` [_(Dockerfile)_]
 
 All images built for `linux/amd64` and `linux/arm64`
 
