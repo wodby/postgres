@@ -81,5 +81,5 @@ jobs:
     - uses: ./.github/actions
       with:
         version: ${{ env.POSTGRES10 }}
-        tags: 10
+        tags: '10'
         platform: linux/amd64,linux/arm64
