@@ -11,13 +11,26 @@ on:
 env:
   DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
   DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+  POSTGRES15: '15.1'
   POSTGRES14: '14.6'
   POSTGRES13: '13.9'
   POSTGRES12: '12.13'
   POSTGRES11: '11.17'
-  POSTGRES10: '10.22'
 
 jobs:
+  postgres-15:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: docker/setup-qemu-action@v1
+      with:
+        platforms: amd64,arm64
+    - uses: docker/setup-buildx-action@v1
+    - uses: ./.github/actions
+      with:
+        version: ${{ env.POSTGRES15 }}
+        tags: 15,latest
+        platform: linux/amd64,linux/arm64
   postgres-14:
     runs-on: ubuntu-latest
     steps:
@@ -29,7 +42,7 @@ jobs:
     - uses: ./.github/actions
       with:
         version: ${{ env.POSTGRES14 }}
-        tags: 14,latest
+        tags: 14
         platform: linux/amd64,linux/arm64
   postgres-13:
     runs-on: ubuntu-latest
@@ -69,17 +82,4 @@ jobs:
       with:
         version: ${{ env.POSTGRES11 }}
         tags: 11
-        platform: linux/amd64,linux/arm64
-  postgres-10:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    - uses: docker/setup-qemu-action@v1
-      with:
-        platforms: amd64,arm64
-    - uses: docker/setup-buildx-action@v1
-    - uses: ./.github/actions
-      with:
-        version: ${{ env.POSTGRES10 }}
-        tags: '10'
         platform: linux/amd64,linux/arm64
