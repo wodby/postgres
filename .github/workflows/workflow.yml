@@ -15,7 +15,7 @@ env:
   POSTGRES14: '14.9'
   POSTGRES13: '13.12'
   POSTGRES12: '12.16'
-  POSTGRES11: '11.20'
+  POSTGRES11: '11.21'
 
 jobs:
   postgres-15:
