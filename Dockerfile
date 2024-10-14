@@ -22,7 +22,7 @@ RUN set -ex; \
         wget; \
     \
     dockerplatform=${TARGETPLATFORM:-linux/amd64};\
-    gotpl_url="https://github.com/wodby/gotpl/releases/download/latest/gotpl-${dockerplatform/\//-}.tar.gz"; \
+    gotpl_url="https://github.com/wodby/gotpl/releases/latest/download/gotpl-${dockerplatform/\//-}.tar.gz"; \
     wget -qO- "${gotpl_url}" | tar xz --no-same-owner -C /usr/local/bin
 
 COPY bin /usr/local/bin
