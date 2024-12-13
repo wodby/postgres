@@ -16,7 +16,12 @@ if [[ -z "${POSTGRES_DB}" ]]; then
 fi
 
 mkdir -p /etc/postgresql/
-gotpl "/etc/gotpl/postgresql-${POSTGRES_MAJOR_VER}.conf.tpl" > "/etc/postgresql/postgresql.conf"
+
+if [[ -f "/etc/gotpl/postgresql.conf.tmpl" ]]; then
+    gotpl "/etc/gotpl/postgresql.conf.tmpl" > "/etc/postgresql/postgresql.conf"
+else
+    gotpl "/etc/gotpl/postgresql-${POSTGRES_MAJOR_VER}.conf.tmpl" > "/etc/postgresql/postgresql.conf"
+fi
 
 if [[ "${1}" == "make" ]]; then
     exec "${@}" -f /usr/local/bin/actions.mk

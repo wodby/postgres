@@ -19,11 +19,11 @@ Overview:
 
 Supported tags and respective `Dockerfile` links:
 
-- `16`, `latest` [_(Dockerfile)_]
+- `17`, `latest` [_(Dockerfile)_]
+- `16` [_(Dockerfile)_]
 - `15` [_(Dockerfile)_]
 - `14` [_(Dockerfile)_]
 - `13` [_(Dockerfile)_]
-- `12` [_(Dockerfile)_]
 
 All images built for `linux/amd64` and `linux/arm64`
 
