@@ -6,11 +6,11 @@
 
 ## Docker Images
 
-❗For better reliability we release images with stability tags (`wodby/postgres:16-X.X.X`) which correspond to [git tags](https://github.com/wodby/postgres/releases). We strongly recommend using images only with stability tags. 
+❗For better reliability we release images with stability tags (`wodby/postgres:18-X.X.X`) which correspond to [git tags](https://github.com/wodby/postgres/releases). We strongly recommend using images only with stability tags. 
 
 Overview:
 
-- All images based on Alpine Linux
+- All images are based on Alpine Linux
 - Base image: [postgres](https://github.com/docker-library/postgres)
 - [GitHub actions builds](https://github.com/wodby/postgres/actions) 
 - [Docker Hub](https://hub.docker.com/r/wodby/postgres)
@@ -19,11 +19,11 @@ Overview:
 
 Supported tags and respective `Dockerfile` links:
 
-- `17`, `latest` [_(Dockerfile)_]
+- `18`, `latest` [_(Dockerfile)_]
+- `17` [_(Dockerfile)_]
 - `16` [_(Dockerfile)_]
 - `15` [_(Dockerfile)_]
 - `14` [_(Dockerfile)_]
-- `13` [_(Dockerfile)_]
 
 All images built for `linux/amd64` and `linux/arm64`
 

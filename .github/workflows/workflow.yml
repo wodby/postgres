@@ -11,75 +11,77 @@ on:
 env:
   DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
   DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+  POSTGRES18: '18.1'
   POSTGRES17: '17.7'
   POSTGRES16: '16.11'
   POSTGRES15: '15.15'
   POSTGRES14: '14.20'
-  POSTGRES13: '13.23'
+
 
 jobs:
-  postgres-17:
+  setup:
     runs-on: ubuntu-latest
+    outputs:
+      pg-versions: ${{ steps.set-matrix.outputs.pg-versions }}
     steps:
-    - uses: actions/checkout@v4
-    - uses: docker/setup-qemu-action@v3
-      with:
-        platforms: amd64,arm64
-    - uses: docker/setup-buildx-action@v3
-    - uses: ./.github/actions
-      with:
-        version: ${{ env.POSTGRES17 }}
-        tags: 17,latest
-        platform: linux/amd64,linux/arm64
-  postgres-16:
-    runs-on: ubuntu-latest
+      - id: set-matrix
+        run: |
+          cat << 'EOF' > versions.json
+          [
+            {"key": "postgres18", "version": "${{ env.POSTGRES18 }}", "latest": true, "latest_major": true},
+            {"key": "postgres17", "version": "${{ env.POSTGRES17 }}", "latest": false, "latest_major": true},
+            {"key": "postgres16", "version": "${{ env.POSTGRES16 }}", "latest": false, "latest_major": true},
+            {"key": "postgres15", "version": "${{ env.POSTGRES15 }}", "latest": false, "latest_major": true}
+            {"key": "postgres14", "version": "${{ env.POSTGRES14 }}", "latest": false, "latest_major": true}
+          ]
+          EOF
+          echo "pg-versions=$(cat versions.json | jq -c .)" >> $GITHUB_OUTPUT
+
+  build:
+    needs: setup
+    strategy:
+      matrix:
+        pg: ${{ fromJson(needs.setup.outputs.pg-versions) }}
+        arch:
+          - amd64
+          - arm64
+        include:
+          - arch: amd64
+            runner: ubuntu-24.04
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-qemu-action@v3
+      - uses: actions/checkout@v5
+      - uses: docker/login-action@v3
         with:
-          platforms: amd64,arm64
-      - uses: docker/setup-buildx-action@v3
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: build and push
+        env:
+          POSTGRES_VER: ${{ matrix.pg.version }}
+          ARCH: ${{ matrix.arch }}
+        run: |
+          make
+          make test
+          make push
+
+  push:
+    runs-on: ubuntu-latest
+    needs:
+      - setup
+      - build
+    strategy:
+      matrix:
+        pg: ${{ fromJson(needs.setup.outputs.pg-versions) }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
       - uses: ./.github/actions
         with:
-          version: ${{ env.POSTGRES16 }}
-          tags: 16
-          platform: linux/amd64,linux/arm64        
-  postgres-15:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    - uses: docker/setup-qemu-action@v3
-      with:
-        platforms: amd64,arm64
-    - uses: docker/setup-buildx-action@v3
-    - uses: ./.github/actions
-      with:
-        version: ${{ env.POSTGRES15 }}
-        tags: 15
-        platform: linux/amd64,linux/arm64
-  postgres-14:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    - uses: docker/setup-qemu-action@v3
-      with:
-        platforms: amd64,arm64
-    - uses: docker/setup-buildx-action@v3
-    - uses: ./.github/actions
-      with:
-        version: ${{ env.POSTGRES14 }}
-        tags: 14
-        platform: linux/amd64,linux/arm64
-  postgres-13:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    - uses: docker/setup-qemu-action@v3
-      with:
-        platforms: amd64,arm64
-    - uses: docker/setup-buildx-action@v3
-    - uses: ./.github/actions
-      with:
-        version: ${{ env.POSTGRES13 }}
-        tags: 13
-        platform: linux/amd64,linux/arm64
+          version: ${{ matrix.pg.version }}
+          latest: ${{ matrix.pg.latest }}
+          latest_major: ${{ matrix.pg.latest_major }}

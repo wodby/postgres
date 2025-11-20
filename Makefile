@@ -1,6 +1,6 @@
 -include env_make
 
-POSTGRES_VER ?= 17.7
+POSTGRES_VER ?= 18.1
 
 # 10.2 => 10, 9.6.3 => 9.6
 # http://www.databasesoup.com/2016/05/changing-postgresql-version-numbering.html
@@ -8,7 +8,7 @@ POSTGRES_MAJOR_VER ?= $(shell echo "$(POSTGRES_VER)" | sed -E 's/.[0-9]+$$//')
 
 TAG ?= $(POSTGRES_MAJOR_VER)
 
-PLATFORM ?= linux/amd64
+PLATFORM ?= linux/arm64
 
 REPO = wodby/postgres
 NAME = postgres-$(POSTGRES_MAJOR_VER)
@@ -19,7 +19,13 @@ ifneq ($(STABILITY_TAG),)
     endif
 endif
 
-.PHONY: build buildx-push buildx-build buildx-build-amd64 test push shell run start stop logs clean release
+IMAGETOOLS_TAG ?= $(TAG)
+
+ifneq ($(ARCH),)
+	override TAG := $(TAG)-$(ARCH)
+endif
+
+.PHONY: build buildx-push buildx-build test push shell run start stop logs clean release
 
 default: build
 
@@ -29,21 +35,12 @@ build:
 		--build-arg POSTGRES_MAJOR_VER=$(POSTGRES_MAJOR_VER) \
 		./
 
-# --load doesn't work with multiple platforms https://github.com/docker/buildx/issues/59
-# we need to save cache to run tests first.
-buildx-build-amd64:
-	docker buildx build --platform linux/amd64 -t $(REPO):$(TAG) \
-		--build-arg POSTGRES_VER=$(POSTGRES_VER) \
-		--build-arg POSTGRES_MAJOR_VER=$(POSTGRES_MAJOR_VER) \
-		--build-arg ALPINE_VER=$(ALPINE_VER) \
-		--load \
-		./
-
 buildx-build:
 	docker buildx build --platform $(PLATFORM) -t $(REPO):$(TAG) \
 		--build-arg POSTGRES_VER=$(POSTGRES_VER) \
 		--build-arg POSTGRES_MAJOR_VER=$(POSTGRES_MAJOR_VER) \
 		--build-arg ALPINE_VER=$(ALPINE_VER) \
+		--load \		
 		./
 
 buildx-push:
@@ -52,6 +49,12 @@ buildx-push:
 		--build-arg POSTGRES_MAJOR_VER=$(POSTGRES_MAJOR_VER) \
 		--build-arg ALPINE_VER=$(ALPINE_VER) \
 		./
+
+buildx-imagetools-create:
+	docker buildx imagetools create -t $(REPO):$(IMAGETOOLS_TAG) \
+				  $(REPO):$(TAG)-amd64 \
+				  $(REPO):$(TAG)-arm64
+.PHONY: buildx-imagetools-create 
 
 test:
 	cd ./tests && NAME=$(NAME) IMAGE=$(REPO):$(TAG) ./run.sh
