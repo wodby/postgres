@@ -31,7 +31,7 @@ jobs:
             {"key": "postgres18", "version": "${{ env.POSTGRES18 }}", "latest": true, "latest_major": true},
             {"key": "postgres17", "version": "${{ env.POSTGRES17 }}", "latest": false, "latest_major": true},
             {"key": "postgres16", "version": "${{ env.POSTGRES16 }}", "latest": false, "latest_major": true},
-            {"key": "postgres15", "version": "${{ env.POSTGRES15 }}", "latest": false, "latest_major": true}
+            {"key": "postgres15", "version": "${{ env.POSTGRES15 }}", "latest": false, "latest_major": true},
             {"key": "postgres14", "version": "${{ env.POSTGRES14 }}", "latest": false, "latest_major": true}
           ]
           EOF
