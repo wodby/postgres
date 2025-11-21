@@ -3,14 +3,12 @@ name: Build docker image
 on:
   push:
     branches:
-    - master
+      - master
 
     tags:
-    - '*'
+      - '*'
 
 env:
-  DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-  DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
   POSTGRES18: '18.1'
   POSTGRES17: '17.7'
   POSTGRES16: '16.11'
@@ -28,11 +26,11 @@ jobs:
         run: |
           cat << 'EOF' > versions.json
           [
-            {"key": "postgres18", "version": "${{ env.POSTGRES18 }}", "latest": true, "latest_major": true},
-            {"key": "postgres17", "version": "${{ env.POSTGRES17 }}", "latest": false, "latest_major": true},
-            {"key": "postgres16", "version": "${{ env.POSTGRES16 }}", "latest": false, "latest_major": true},
-            {"key": "postgres15", "version": "${{ env.POSTGRES15 }}", "latest": false, "latest_major": true},
-            {"key": "postgres14", "version": "${{ env.POSTGRES14 }}", "latest": false, "latest_major": true}
+            {"key": "postgres18", "version": "${{ env.POSTGRES18 }}", "latest": "1", "latest_major": "1"},
+            {"key": "postgres17", "version": "${{ env.POSTGRES17 }}", "latest": "", "latest_major": "1"},
+            {"key": "postgres16", "version": "${{ env.POSTGRES16 }}", "latest": "", "latest_major": "1"},
+            {"key": "postgres15", "version": "${{ env.POSTGRES15 }}", "latest": "", "latest_major": "1"},
+            {"key": "postgres14", "version": "${{ env.POSTGRES14 }}", "latest": "", "latest_major": "1"}
           ]
           EOF
           echo "pg-versions=$(cat versions.json | jq -c .)" >> $GITHUB_OUTPUT
