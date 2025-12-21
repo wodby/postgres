@@ -67,6 +67,12 @@ commands:
     backup filepath=</path/to/backup.sql.gz> [user password host db ignore=<"table1;table2"> nice ionice] 
     query query=<SELECT 1> [user password db host] 
     query-silent query=<SELECT 1> [user password db host]
+    create-db name enconding lc_collate lc_ctype
+    drop-db name
+    create-user username password
+    drop-user username
+    grant-user-db username db
+    revok-user-db username db
     check-ready [user password db host max_try wait_seconds delay_seconds]  
     
 default params values:

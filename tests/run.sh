@@ -38,6 +38,30 @@ echo -n "Checking extensions... "
 postgres make query-silent query='\dx' | grep -q 'pg_trgm'
 echo "OK"
 
+echo -n "Create DB... "
+postgres make create-db name='superdatabase' encoding='UTF8' lc_collate='en_US.utf8' lc_ctype='en_US.utf8'
+echo "OK"
+
+echo -n "Create user... "
+postgres make create-user username='userpg123' password='bad-password'
+echo "OK"
+
+echo -n "Grant user... "
+postgres make grant-user-db username='userpg123' db='superdatabase'
+echo "OK"
+
+echo -n "Revoke user... "
+postgres make create-user username='userpg123' db='superdatabase'
+echo "OK"
+
+echo -n "Drop DB... "
+postgres make drop-db name='superdatabase' encoding='UTF8' lc_collate='en_US.utf8' lc_ctype='en_US.utf8'
+echo "OK"
+
+echo -n "Drop user... "
+postgres make drop-user username='userpg123' password='bad-password'
+echo "OK"
+
 echo -n "Running queries... "
 postgres make query query="CREATE TABLE test (a INT, b INT, c VARCHAR(255))"
 [ "$(postgres make query-silent query='SELECT COUNT(*) FROM test')" = 0 ]
