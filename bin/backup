@@ -15,7 +15,7 @@ exclude_tables=$6
 nice=$7
 ionice=$8
 
-filename="dump.sql"
+filename="backup.sql"
 tmp_dir="/tmp/$RANDOM"
 ignore=()
 
