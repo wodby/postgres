@@ -9,7 +9,7 @@ on:
       - '*'
 
 env:
-  POSTGRES18: '18.2'
+  POSTGRES18: '18.3'
   POSTGRES17: '17.8'
   POSTGRES16: '16.12'
   POSTGRES15: '15.16'
