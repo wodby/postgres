@@ -20,36 +20,40 @@ Overview:
 Supported tags and respective `Dockerfile` links:
 
 - `18`, `latest` [_(Dockerfile)_]
+- `18-postgis`, `postgis` [_(Dockerfile)_]
 - `17` [_(Dockerfile)_]
+- `17-postgis` [_(Dockerfile)_]
 - `16` [_(Dockerfile)_]
+- `16-postgis` [_(Dockerfile)_]
 - `15` [_(Dockerfile)_]
+- `15-postgis` [_(Dockerfile)_]
 - `14` [_(Dockerfile)_]
+- `14-postgis` [_(Dockerfile)_]
 
 All images built for `linux/amd64` and `linux/arm64`
 
-## Bundled PostGIS
+## PostGIS Tags
 
-All images are built with PostGIS available in the PostgreSQL installation. Extensions are still created only when you request them via `POSTGRES_DB_EXTENSIONS`.
+Plain tags (`18`, `17`, and so on) stay lean and do not include PostGIS.
 
-To enable only the base PostGIS extension at initialization time:
+PostGIS tags (`18-postgis`, `17-postgis`, and so on) bundle PostGIS and default `POSTGRES_DB_EXTENSIONS` to:
+
+```bash
+postgis,postgis_raster,postgis_sfcgal,fuzzystrmatch,address_standardizer,address_standardizer_data_us,postgis_tiger_geocoder,postgis_topology
+```
+
+That means a container started from `wodby/postgres:18-postgis` or `wodby/postgres:postgis` will create the PostGIS extension set during initialization by default.
+
+To override the default set:
 
 ```bash
 docker run --rm \
   -e POSTGRES_PASSWORD=password \
   -e POSTGRES_DB_EXTENSIONS=postgis \
-  wodby/postgres:18
+  wodby/postgres:18-postgis
 ```
 
-Or for multiple extensions:
-
-```bash
-docker run --rm \
-  -e POSTGRES_PASSWORD=password \
-  -e POSTGRES_DB_EXTENSIONS=pg_trgm,postgis,postgis_raster,postgis_sfcgal,fuzzystrmatch,address_standardizer,address_standardizer_data_us,postgis_tiger_geocoder,postgis_topology \
-  wodby/postgres:18
-```
-
-Bundled PostGIS versions:
+Bundled PostGIS versions for the `*-postgis` tags:
 
 - PostgreSQL `14`-`17`: PostGIS `3.5.5`
 - PostgreSQL `18`: PostGIS `3.6.2`

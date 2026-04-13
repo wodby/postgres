@@ -5,10 +5,13 @@ inputs:
     description: version
     required: true
   latest:
-    description: if tag latest
+    description: optional floating alias
     required: false
   latest_major:
     description: if tag latest major version
+    required: false
+  tag_suffix:
+    description: suffix appended to major and minor tags
     required: false
 runs:
   using: "composite"
@@ -16,8 +19,9 @@ runs:
     - name: Build image
       env:
         POSTGRES_VER: ${{ inputs.version }}
-        LATEST: ${{ inputs.latest }}
+        LATEST_ALIAS: ${{ inputs.latest }}
         LATEST_MAJOR: ${{ inputs.latest_major }}
+        TAG_SUFFIX: ${{ inputs.tag_suffix }}
       run: |
         . $GITHUB_ACTION_PATH/release.sh
       shell: bash

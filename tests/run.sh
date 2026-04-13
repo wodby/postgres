@@ -10,17 +10,19 @@ export POSTGRES_PASSWORD='password'
 export POSTGRES_USER='superuser'
 export POSTGRES_DB='postgres'
 
-required_extensions=(
-	pg_trgm
-	postgis
-	postgis_raster
-	postgis_sfcgal
-	fuzzystrmatch
-	address_standardizer
-	address_standardizer_data_us
-	postgis_tiger_geocoder
-	postgis_topology
-)
+required_extensions=(pg_trgm)
+if [[ "${TEST_POSTGIS}" == "1" ]]; then
+	required_extensions+=(
+		postgis
+		postgis_raster
+		postgis_sfcgal
+		fuzzystrmatch
+		address_standardizer
+		address_standardizer_data_us
+		postgis_tiger_geocoder
+		postgis_topology
+	)
+fi
 db_extensions="$(IFS=,; echo "${required_extensions[*]}")"
 
 cid="$(
@@ -54,19 +56,21 @@ for extension in "${required_extensions[@]}"; do
 done
 echo "OK"
 
-echo -n "Running extension smoke tests... "
-similarity_query="SELECT similarity('postgres', 'postgis') > 0"
-levenshtein_query="SELECT levenshtein('kitten'::text, 'sitting'::text)"
-topology_query="SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'topology' AND table_name = 'topology')"
-[ "$(postgres make query-silent query="${similarity_query}")" = 't' ]
-[ "$(postgres make query-silent query="${levenshtein_query}")" = '3' ]
-postgres make query-silent query='SELECT postgis_version()' >/dev/null
-postgres make query-silent query='SELECT postgis_raster_lib_version()' >/dev/null
-postgres make query-silent query='SELECT postgis_sfcgal_version()' >/dev/null
-[ "$(postgres make query-silent query="${topology_query}")" = 't' ]
-[ "$(postgres make query-silent query='SELECT COUNT(*) > 0 FROM tiger.pagc_rules')" = 't' ]
-[ "$(postgres make query-silent query='SELECT COUNT(*) > 0 FROM public.us_lex')" = 't' ]
-echo "OK"
+if [[ "${TEST_POSTGIS}" == "1" ]]; then
+	echo -n "Running extension smoke tests... "
+	similarity_query="SELECT similarity('postgres', 'postgis') > 0"
+	levenshtein_query="SELECT levenshtein('kitten'::text, 'sitting'::text)"
+	topology_query="SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'topology' AND table_name = 'topology')"
+	[ "$(postgres make query-silent query="${similarity_query}")" = 't' ]
+	[ "$(postgres make query-silent query="${levenshtein_query}")" = '3' ]
+	postgres make query-silent query='SELECT postgis_version()' >/dev/null
+	postgres make query-silent query='SELECT postgis_raster_lib_version()' >/dev/null
+	postgres make query-silent query='SELECT postgis_sfcgal_version()' >/dev/null
+	[ "$(postgres make query-silent query="${topology_query}")" = 't' ]
+	[ "$(postgres make query-silent query='SELECT COUNT(*) > 0 FROM tiger.pagc_rules')" = 't' ]
+	[ "$(postgres make query-silent query='SELECT COUNT(*) > 0 FROM public.us_lex')" = 't' ]
+	echo "OK"
+fi
 
 echo -n "Create DB... "
 postgres make create-db name='superdatabase' encoding='UTF8' lc_collate='en_US.utf8' lc_ctype='en_US.utf8'

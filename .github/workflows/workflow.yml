@@ -26,11 +26,16 @@ jobs:
         run: |
           cat << 'EOF' > versions.json
           [
-            {"key": "postgres18", "version": "${{ env.POSTGRES18 }}", "latest": "1", "latest_major": "1"},
-            {"key": "postgres17", "version": "${{ env.POSTGRES17 }}", "latest": "", "latest_major": "1"},
-            {"key": "postgres16", "version": "${{ env.POSTGRES16 }}", "latest": "", "latest_major": "1"},
-            {"key": "postgres15", "version": "${{ env.POSTGRES15 }}", "latest": "", "latest_major": "1"},
-            {"key": "postgres14", "version": "${{ env.POSTGRES14 }}", "latest": "", "latest_major": "1"}
+            {"key": "postgres18", "version": "${{ env.POSTGRES18 }}", "latest": "latest", "latest_major": "1", "with_postgis": "0", "tag_suffix": ""},
+            {"key": "postgres18-postgis", "version": "${{ env.POSTGRES18 }}", "latest": "postgis", "latest_major": "1", "with_postgis": "1", "tag_suffix": "-postgis"},
+            {"key": "postgres17", "version": "${{ env.POSTGRES17 }}", "latest": "", "latest_major": "1", "with_postgis": "0", "tag_suffix": ""},
+            {"key": "postgres17-postgis", "version": "${{ env.POSTGRES17 }}", "latest": "", "latest_major": "1", "with_postgis": "1", "tag_suffix": "-postgis"},
+            {"key": "postgres16", "version": "${{ env.POSTGRES16 }}", "latest": "", "latest_major": "1", "with_postgis": "0", "tag_suffix": ""},
+            {"key": "postgres16-postgis", "version": "${{ env.POSTGRES16 }}", "latest": "", "latest_major": "1", "with_postgis": "1", "tag_suffix": "-postgis"},
+            {"key": "postgres15", "version": "${{ env.POSTGRES15 }}", "latest": "", "latest_major": "1", "with_postgis": "0", "tag_suffix": ""},
+            {"key": "postgres15-postgis", "version": "${{ env.POSTGRES15 }}", "latest": "", "latest_major": "1", "with_postgis": "1", "tag_suffix": "-postgis"},
+            {"key": "postgres14", "version": "${{ env.POSTGRES14 }}", "latest": "", "latest_major": "1", "with_postgis": "0", "tag_suffix": ""},
+            {"key": "postgres14-postgis", "version": "${{ env.POSTGRES14 }}", "latest": "", "latest_major": "1", "with_postgis": "1", "tag_suffix": "-postgis"}
           ]
           EOF
           echo "pg-versions=$(cat versions.json | jq -c .)" >> $GITHUB_OUTPUT
@@ -58,6 +63,7 @@ jobs:
       - name: build and push
         env:
           POSTGRES_VER: ${{ matrix.pg.version }}
+          WITH_POSTGIS: ${{ matrix.pg.with_postgis }}
           ARCH: ${{ matrix.arch }}
         run: |
           make
@@ -83,3 +89,4 @@ jobs:
           version: ${{ matrix.pg.version }}
           latest: ${{ matrix.pg.latest }}
           latest_major: ${{ matrix.pg.latest_major }}
+          tag_suffix: ${{ matrix.pg.tag_suffix }}
