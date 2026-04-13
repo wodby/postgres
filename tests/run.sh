@@ -10,12 +10,25 @@ export POSTGRES_PASSWORD='password'
 export POSTGRES_USER='superuser'
 export POSTGRES_DB='postgres'
 
+required_extensions=(
+	pg_trgm
+	postgis
+	postgis_raster
+	postgis_sfcgal
+	fuzzystrmatch
+	address_standardizer
+	address_standardizer_data_us
+	postgis_tiger_geocoder
+	postgis_topology
+)
+db_extensions="$(IFS=,; echo "${required_extensions[*]}")"
+
 cid="$(
 	docker run -d \
 		-e POSTGRES_PASSWORD \
 		-e POSTGRES_USER \
 		-e POSTGRES_DB \
-		-e POSTGRES_DB_EXTENSIONS=pg_trgm \
+		-e POSTGRES_DB_EXTENSIONS="${db_extensions}" \
 		-e DEBUG \
 		--name "${NAME}" \
 		"${IMAGE}"
@@ -35,7 +48,24 @@ postgres() {
 postgres make check-ready max_try=12 wait_seconds=5
 
 echo -n "Checking extensions... "
-postgres make query-silent query='\dx' | grep -q 'pg_trgm'
+installed_extensions="$(postgres make query-silent query='SELECT extname FROM pg_extension ORDER BY 1')"
+for extension in "${required_extensions[@]}"; do
+	grep -qx "${extension}" <<< "${installed_extensions}"
+done
+echo "OK"
+
+echo -n "Running extension smoke tests... "
+similarity_query="SELECT similarity('postgres', 'postgis') > 0"
+levenshtein_query="SELECT levenshtein('kitten'::text, 'sitting'::text)"
+topology_query="SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'topology' AND table_name = 'topology')"
+[ "$(postgres make query-silent query="${similarity_query}")" = 't' ]
+[ "$(postgres make query-silent query="${levenshtein_query}")" = '3' ]
+postgres make query-silent query='SELECT postgis_version()' >/dev/null
+postgres make query-silent query='SELECT postgis_raster_lib_version()' >/dev/null
+postgres make query-silent query='SELECT postgis_sfcgal_version()' >/dev/null
+[ "$(postgres make query-silent query="${topology_query}")" = 't' ]
+[ "$(postgres make query-silent query='SELECT COUNT(*) > 0 FROM tiger.pagc_rules')" = 't' ]
+[ "$(postgres make query-silent query='SELECT COUNT(*) > 0 FROM public.us_lex')" = 't' ]
 echo "OK"
 
 echo -n "Create DB... "

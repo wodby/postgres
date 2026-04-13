@@ -6,6 +6,20 @@ POSTGRES_VER ?= 18.3
 # http://www.databasesoup.com/2016/05/changing-postgresql-version-numbering.html
 POSTGRES_MAJOR_VER ?= $(shell echo "$(POSTGRES_VER)" | sed -E 's/.[0-9]+$$//')
 
+ifneq ($(filter $(POSTGRES_MAJOR_VER),14 15 16 17),)
+POSTGIS_VERSION ?= 3.5.5
+POSTGIS_SHA256 ?= fc3408c474662b5354c9569cfbd18172f2f4818c09945725b8d0089169925fb1
+endif
+
+ifeq ($(POSTGRES_MAJOR_VER),18)
+POSTGIS_VERSION ?= 3.6.2
+POSTGIS_SHA256 ?= 607a4d21c017e5283e15d2d977c9b7f575ddfc672afdee81fc84a2d823db4ba5
+endif
+
+ifndef POSTGIS_VERSION
+$(error Unsupported POSTGRES_MAJOR_VER "$(POSTGRES_MAJOR_VER)" for bundled PostGIS)
+endif
+
 TAG ?= $(POSTGRES_MAJOR_VER)
 
 PLATFORM ?= linux/arm64
@@ -33,12 +47,16 @@ build:
 	docker build -t $(REPO):$(TAG) \
 		--build-arg POSTGRES_VER=$(POSTGRES_VER) \
 		--build-arg POSTGRES_MAJOR_VER=$(POSTGRES_MAJOR_VER) \
+		--build-arg POSTGIS_VERSION=$(POSTGIS_VERSION) \
+		--build-arg POSTGIS_SHA256=$(POSTGIS_SHA256) \
 		./
 
 buildx-build:
 	docker buildx build --platform $(PLATFORM) -t $(REPO):$(TAG) \
 		--build-arg POSTGRES_VER=$(POSTGRES_VER) \
 		--build-arg POSTGRES_MAJOR_VER=$(POSTGRES_MAJOR_VER) \
+		--build-arg POSTGIS_VERSION=$(POSTGIS_VERSION) \
+		--build-arg POSTGIS_SHA256=$(POSTGIS_SHA256) \
 		--build-arg ALPINE_VER=$(ALPINE_VER) \
 		--load \		
 		./
@@ -47,6 +65,8 @@ buildx-push:
 	docker buildx build --platform $(PLATFORM) --push -t $(REPO):$(TAG) \
 		--build-arg POSTGRES_VER=$(POSTGRES_VER) \
 		--build-arg POSTGRES_MAJOR_VER=$(POSTGRES_MAJOR_VER) \
+		--build-arg POSTGIS_VERSION=$(POSTGIS_VERSION) \
+		--build-arg POSTGIS_SHA256=$(POSTGIS_SHA256) \
 		--build-arg ALPINE_VER=$(ALPINE_VER) \
 		./
 

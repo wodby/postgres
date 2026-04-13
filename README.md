@@ -27,6 +27,33 @@ Supported tags and respective `Dockerfile` links:
 
 All images built for `linux/amd64` and `linux/arm64`
 
+## Bundled PostGIS
+
+All images are built with PostGIS available in the PostgreSQL installation. Extensions are still created only when you request them via `POSTGRES_DB_EXTENSIONS`.
+
+To enable only the base PostGIS extension at initialization time:
+
+```bash
+docker run --rm \
+  -e POSTGRES_PASSWORD=password \
+  -e POSTGRES_DB_EXTENSIONS=postgis \
+  wodby/postgres:18
+```
+
+Or for multiple extensions:
+
+```bash
+docker run --rm \
+  -e POSTGRES_PASSWORD=password \
+  -e POSTGRES_DB_EXTENSIONS=pg_trgm,postgis,postgis_raster,postgis_sfcgal,fuzzystrmatch,address_standardizer,address_standardizer_data_us,postgis_tiger_geocoder,postgis_topology \
+  wodby/postgres:18
+```
+
+Bundled PostGIS versions:
+
+- PostgreSQL `14`-`17`: PostGIS `3.5.5`
+- PostgreSQL `18`: PostGIS `3.6.2`
+
 ## Environment Variables
 
 | Variable                                | Default Value        | Description        |
