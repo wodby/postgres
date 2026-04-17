@@ -86,16 +86,20 @@ echo -n "Grant user... "
 postgres make grant-user-db username='userpg123' db='superdatabase'
 grant_db_privilege_query="SELECT has_database_privilege('userpg123', 'superdatabase', 'CREATE,CONNECT,TEMPORARY')"
 grant_schema_privilege_query="SELECT has_schema_privilege('userpg123', 'superdatabase', 'CREATE,USAGE')"
+grant_search_path_query="SELECT current_schema() = 'superdatabase' AND POSITION('superdatabase' IN current_setting('search_path')) > 0"
 [ "$(postgres make query-silent query="${grant_db_privilege_query}")" = 't' ]
 [ "$(postgres make query-silent db='superdatabase' query="${grant_schema_privilege_query}")" = 't' ]
+[ "$(postgres make query-silent user='userpg123' password='bad-password' db='superdatabase' query="${grant_search_path_query}")" = 't' ]
 echo "OK"
 
 echo -n "Revoke user... "
 postgres make revoke-user-db username='userpg123' db='superdatabase'
 revoke_db_privilege_query="SELECT has_database_privilege('userpg123', 'superdatabase', 'CREATE')"
 revoke_schema_privilege_query="SELECT has_schema_privilege('userpg123', 'superdatabase', 'USAGE')"
+revoke_search_path_query="SELECT POSITION('superdatabase' IN current_setting('search_path')) = 0 AND POSITION('\$user' IN current_setting('search_path')) > 0"
 [ "$(postgres make query-silent query="${revoke_db_privilege_query}")" = 'f' ]
 [ "$(postgres make query-silent db='superdatabase' query="${revoke_schema_privilege_query}")" = 'f' ]
+[ "$(postgres make query-silent user='userpg123' password='bad-password' db='superdatabase' query="${revoke_search_path_query}")" = 't' ]
 echo "OK"
 
 echo -n "Drop DB... "

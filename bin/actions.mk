@@ -72,12 +72,14 @@ grant-user-db:
 	$(eval override db := $(shell echo "${db}" | tr -d \'\"))
 	PGPASSWORD=$(POSTGRES_PASSWORD) psql -U$(POSTGRES_USER) -h$(host) -d postgres -c "GRANT ALL PRIVILEGES ON DATABASE \"$(db)\" TO \"$(username)\";"
 	PGPASSWORD=$(POSTGRES_PASSWORD) psql -U$(POSTGRES_USER) -h$(host) -d "$(db)" -c "GRANT ALL PRIVILEGES ON SCHEMA \"$(db)\" TO \"$(username)\";"
+	PGPASSWORD=$(POSTGRES_PASSWORD) psql -U$(POSTGRES_USER) -h$(host) -d postgres -c "ALTER ROLE \"$(username)\" IN DATABASE \"$(db)\" SET search_path TO \"$(db)\", public;"
 .PHONY: grant-user-db
 
 revoke-user-db:
 	$(call check_defined, username, db)
 	$(eval override username := $(shell echo "${username}" | tr -d \'\"))
 	$(eval override db := $(shell echo "${db}" | tr -d \'\"))
+	PGPASSWORD=$(POSTGRES_PASSWORD) psql -U$(POSTGRES_USER) -h$(host) -d postgres -c "ALTER ROLE \"$(username)\" IN DATABASE \"$(db)\" RESET search_path;"
 	PGPASSWORD=$(POSTGRES_PASSWORD) psql -U$(POSTGRES_USER) -h$(host) -d "$(db)" -c "REVOKE ALL PRIVILEGES ON SCHEMA \"$(db)\" FROM \"$(username)\";"
 	PGPASSWORD=$(POSTGRES_PASSWORD) psql -U$(POSTGRES_USER) -h$(host) -d postgres -c "REVOKE ALL PRIVILEGES ON DATABASE \"$(db)\" FROM \"$(username)\";"
 .PHONY: revoke-user-db

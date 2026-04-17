@@ -106,8 +106,10 @@ commands:
     drop-user username
     grant-user-db username db
       also grants access to the same-name schema inside that database
+      and sets the user's search_path for that database to "<db>", public
     revoke-user-db username db
       also revokes access to the same-name schema inside that database
+      and resets the user's search_path for that database
     check-ready [user password db host max_try wait_seconds delay_seconds]  
     
 default params values:
