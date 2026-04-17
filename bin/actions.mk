@@ -44,6 +44,7 @@ create-db:
 	$(eval override lc_ctype := $(or $(lc_ctype),en_US.utf8))
 	$(eval override name := $(shell echo "${name}" | tr -d \'\"))
 	PGPASSWORD=$(POSTGRES_PASSWORD) psql -U$(POSTGRES_USER) -h$(host) -d postgres -c "CREATE DATABASE \"$(name)\" ENCODING '$(encoding)' LC_COLLATE '$(lc_collate)' LC_CTYPE '$(lc_ctype)';" 2>&1 | grep -v "already exists" || true
+	PGPASSWORD=$(POSTGRES_PASSWORD) psql -U$(POSTGRES_USER) -h$(host) -d "$(name)" -c "CREATE SCHEMA IF NOT EXISTS \"$(name)\";"
 .PHONY: create-db
 
 drop-db:
@@ -70,12 +71,14 @@ grant-user-db:
 	$(eval override username := $(shell echo "${username}" | tr -d \'\"))
 	$(eval override db := $(shell echo "${db}" | tr -d \'\"))
 	PGPASSWORD=$(POSTGRES_PASSWORD) psql -U$(POSTGRES_USER) -h$(host) -d postgres -c "GRANT ALL PRIVILEGES ON DATABASE \"$(db)\" TO \"$(username)\";"
+	PGPASSWORD=$(POSTGRES_PASSWORD) psql -U$(POSTGRES_USER) -h$(host) -d "$(db)" -c "GRANT ALL PRIVILEGES ON SCHEMA \"$(db)\" TO \"$(username)\";"
 .PHONY: grant-user-db
 
 revoke-user-db:
 	$(call check_defined, username, db)
 	$(eval override username := $(shell echo "${username}" | tr -d \'\"))
 	$(eval override db := $(shell echo "${db}" | tr -d \'\"))
+	PGPASSWORD=$(POSTGRES_PASSWORD) psql -U$(POSTGRES_USER) -h$(host) -d "$(db)" -c "REVOKE ALL PRIVILEGES ON SCHEMA \"$(db)\" FROM \"$(username)\";"
 	PGPASSWORD=$(POSTGRES_PASSWORD) psql -U$(POSTGRES_USER) -h$(host) -d postgres -c "REVOKE ALL PRIVILEGES ON DATABASE \"$(db)\" FROM \"$(username)\";"
 .PHONY: revoke-user-db
 

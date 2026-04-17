@@ -74,6 +74,8 @@ fi
 
 echo -n "Create DB... "
 postgres make create-db name='superdatabase' encoding='UTF8' lc_collate='en_US.utf8' lc_ctype='en_US.utf8'
+same_name_schema_query="SELECT EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'superdatabase')"
+[ "$(postgres make query-silent db='superdatabase' query="${same_name_schema_query}")" = 't' ]
 echo "OK"
 
 echo -n "Create user... "
@@ -82,14 +84,24 @@ echo "OK"
 
 echo -n "Grant user... "
 postgres make grant-user-db username='userpg123' db='superdatabase'
+grant_db_privilege_query="SELECT has_database_privilege('userpg123', 'superdatabase', 'CREATE,CONNECT,TEMPORARY')"
+grant_schema_privilege_query="SELECT has_schema_privilege('userpg123', 'superdatabase', 'CREATE,USAGE')"
+[ "$(postgres make query-silent query="${grant_db_privilege_query}")" = 't' ]
+[ "$(postgres make query-silent db='superdatabase' query="${grant_schema_privilege_query}")" = 't' ]
 echo "OK"
 
 echo -n "Revoke user... "
-postgres make create-user username='userpg123' db='superdatabase'
+postgres make revoke-user-db username='userpg123' db='superdatabase'
+revoke_db_privilege_query="SELECT has_database_privilege('userpg123', 'superdatabase', 'CREATE')"
+revoke_schema_privilege_query="SELECT has_schema_privilege('userpg123', 'superdatabase', 'USAGE')"
+[ "$(postgres make query-silent query="${revoke_db_privilege_query}")" = 'f' ]
+[ "$(postgres make query-silent db='superdatabase' query="${revoke_schema_privilege_query}")" = 'f' ]
 echo "OK"
 
 echo -n "Drop DB... "
 postgres make drop-db name='superdatabase' encoding='UTF8' lc_collate='en_US.utf8' lc_ctype='en_US.utf8'
+dropped_db_query="SELECT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'superdatabase')"
+[ "$(postgres make query-silent query="${dropped_db_query}")" = 'f' ]
 echo "OK"
 
 echo -n "Drop user... "

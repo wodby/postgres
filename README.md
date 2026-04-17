@@ -99,11 +99,15 @@ commands:
     query query=<SELECT 1> [user password db host] 
     query-silent query=<SELECT 1> [user password db host]
     create-db name enconding lc_collate lc_ctype
+      also creates a schema with the same name inside the database
     drop-db name
+      drops the database; the same-name schema is removed with it
     create-user username password
     drop-user username
     grant-user-db username db
-    revok-user-db username db
+      also grants access to the same-name schema inside that database
+    revoke-user-db username db
+      also revokes access to the same-name schema inside that database
     check-ready [user password db host max_try wait_seconds delay_seconds]  
     
 default params values:
