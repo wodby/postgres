@@ -55,8 +55,8 @@ docker run --rm \
 
 Bundled PostGIS versions for the `*-postgis` tags:
 
-- PostgreSQL `14`-`17`: PostGIS `3.5.5`
-- PostgreSQL `18`: PostGIS `3.6.2`
+- PostgreSQL `14`-`17`: PostGIS `3.5.7`
+- PostgreSQL `18`: PostGIS `3.6.4`
 
 ## Environment Variables
 
