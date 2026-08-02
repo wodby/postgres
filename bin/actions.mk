@@ -57,7 +57,16 @@ create-user:
 	$(call check_defined, username, password)
 	$(eval override password := $(shell echo "${password}" | tr -d \'\"))
 	$(eval override username := $(shell echo "${username}" | tr -d \'\"))
-	PGPASSWORD=$(POSTGRES_PASSWORD) psql -U$(POSTGRES_USER) -h$(host) -d postgres -c "DO \$$\$$ BEGIN IF NOT EXISTS (SELECT FROM pg_catalog.pg_user WHERE usename = '$(username)') THEN CREATE USER \"$(username)\" WITH PASSWORD '$(password)'; END IF; END \$$\$$;"
+	@if PGPASSWORD=$(POSTGRES_PASSWORD) psql -U$(POSTGRES_USER) -h$(host) -d postgres -tAc "SELECT 1 FROM pg_catalog.pg_user WHERE usename = '$(username)';" | grep -q 1; then \
+		if PGPASSWORD=$(password) psql -U$(username) -h$(host) -d postgres -c "SELECT 1;" >/dev/null 2>&1; then \
+			echo "Database user $(username) already exists with the expected credentials"; \
+		else \
+			echo "Database user $(username) already exists with different credentials; refusing to replace it" >&2; \
+			exit 1; \
+		fi; \
+	else \
+		PGPASSWORD=$(POSTGRES_PASSWORD) psql -U$(POSTGRES_USER) -h$(host) -d postgres -c "CREATE USER \"$(username)\" WITH PASSWORD '$(password)';"; \
+	fi
 .PHONY: create-user
 
 drop-user:

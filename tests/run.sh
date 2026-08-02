@@ -80,6 +80,12 @@ echo "OK"
 
 echo -n "Create user... "
 postgres make create-user username='userpg123' password='bad-password'
+postgres make create-user username='userpg123' password='bad-password'
+if postgres make create-user username='userpg123' password='unexpected-password'; then
+	echo "Create user unexpectedly replaced credentials" >&2
+	exit 1
+fi
+[ "$(postgres make query-silent user='userpg123' password='bad-password' query='SELECT 1')" = '1' ]
 echo "OK"
 
 echo -n "Grant user... "

@@ -126,6 +126,9 @@ default params values:
     ionice 7    
 ```
 
+`create-user` is safe to retry when the existing role accepts the requested password, but fails on a same-named role
+with different credentials rather than replacing it.
+
 ## Deployment
 
 Deploy PostgreSQL to your server via [![Wodby](https://www.google.com/s2/favicons?domain=wodby.com) Wodby](https://wodby.com/stacks/postgres).
