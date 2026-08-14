@@ -1,6 +1,6 @@
 -include env_make
 
-POSTGRES_VER ?= 18.4
+POSTGRES_VER ?= 18.6
 WITH_POSTGIS ?= 0
 
 POSTGIS_DEFAULT_EXTENSIONS = postgis,postgis_raster,postgis_sfcgal,fuzzystrmatch,address_standardizer,address_standardizer_data_us,postgis_tiger_geocoder,postgis_topology
