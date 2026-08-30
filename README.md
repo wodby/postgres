@@ -70,6 +70,8 @@ Bundled PostGIS versions for the `*-postgis` tags:
 | `POSTGRES_DEFAULT_TEXT_SEARCH_CONFIG`   | `pg_catalog.english` |                    |
 | `POSTGRES_EFFECTIVE_CACHE_SIZE`         | `1GB`                |                    |
 | `POSTGRES_DB_EXTENSIONS`                |                      | Separated by comma |
+| `POSTGRES_INITDB_PASSWORD`              |                      | Password for the optional role created before initialization imports |
+| `POSTGRES_INITDB_USER`                  |                      | Optional role created before initialization imports |
 | `POSTGRES_LC_MESSAGES`                  | `en_US.utf8`         |                    |
 | `POSTGRES_LC_MONETARY`                  | `en_US.utf8`         |                    |
 | `POSTGRES_LC_NUMERIC`                   | `en_US.utf8`         |                    |
@@ -86,6 +88,10 @@ Bundled PostGIS versions for the `*-postgis` tags:
 | `POSTGRES_USER`                         | `postgres`           |                    |
 | `POSTGRES_WAL_BUFFERS`                  | `16MB`               |                    |
 | `POSTGRES_WORK_MEM`                     | `5MB`                |                    |
+
+Files mounted at `/wodby/import` are processed after the image's built-in initialization scripts. Set
+`POSTGRES_INITDB_USER` and `POSTGRES_INITDB_PASSWORD` together when imported SQL contains objects owned by a role that
+must exist before the import starts. These variables do not replace the `POSTGRES_USER` cluster administrator.
 
 ## Orchestration Actions
 
