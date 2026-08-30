@@ -13,6 +13,7 @@ export POSTGRES_INITDB_USER='managed_user'
 export POSTGRES_INITDB_PASSWORD='managed-password'
 
 import_dir="$(mktemp -d)"
+chmod 755 "${import_dir}"
 cid=''
 cleanup() {
 	if [[ -n "${cid}" ]]; then
