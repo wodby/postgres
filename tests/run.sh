@@ -9,6 +9,24 @@ fi
 export POSTGRES_PASSWORD='password'
 export POSTGRES_USER='superuser'
 export POSTGRES_DB='postgres'
+export POSTGRES_INITDB_USER='managed_user'
+export POSTGRES_INITDB_PASSWORD='managed-password'
+
+import_dir="$(mktemp -d)"
+cid=''
+cleanup() {
+	if [[ -n "${cid}" ]]; then
+		docker rm -vf "${cid}" >/dev/null
+	fi
+	rm -r "${import_dir}"
+}
+trap cleanup EXIT
+
+cat > "${import_dir}/import.sql" <<'SQL'
+CREATE TABLE managed_import_test (value text NOT NULL);
+ALTER TABLE managed_import_test OWNER TO managed_user;
+INSERT INTO managed_import_test VALUES ('imported');
+SQL
 
 required_extensions=(pg_trgm)
 if [[ "${TEST_POSTGIS}" == "1" ]]; then
@@ -30,12 +48,14 @@ cid="$(
 		-e POSTGRES_PASSWORD \
 		-e POSTGRES_USER \
 		-e POSTGRES_DB \
+		-e POSTGRES_INITDB_USER \
+		-e POSTGRES_INITDB_PASSWORD \
 		-e POSTGRES_DB_EXTENSIONS="${db_extensions}" \
 		-e DEBUG \
+		-v "${import_dir}:/wodby/import:ro" \
 		--name "${NAME}" \
 		"${IMAGE}"
 )"
-trap "docker rm -vf ${cid} > /dev/null" EXIT
 
 postgres() {
 	docker run --rm -i \
@@ -48,6 +68,11 @@ postgres() {
 }
 
 postgres make check-ready max_try=12 wait_seconds=5
+
+echo -n "Checking initialization import user... "
+[ "$(postgres make query-silent user="${POSTGRES_INITDB_USER}" password="${POSTGRES_INITDB_PASSWORD}" query='SELECT value FROM managed_import_test')" = 'imported' ]
+[ "$(postgres make query-silent query="SELECT tableowner FROM pg_catalog.pg_tables WHERE tablename = 'managed_import_test'")" = "${POSTGRES_INITDB_USER}" ]
+echo "OK"
 
 echo -n "Checking extensions... "
 installed_extensions="$(postgres make query-silent query='SELECT extname FROM pg_extension ORDER BY 1')"
