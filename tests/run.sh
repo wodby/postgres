@@ -214,7 +214,12 @@ docker run --rm \
         wait "${reader}"
         test "$(cat /stream/status)" != 0
     '
-postgres make import source="${stream_dir}/export.sql.gz"
+docker run --rm -i \
+    -e POSTGRES_USER -e POSTGRES_PASSWORD -e POSTGRES_DB -e DEBUG \
+    -v "${stream_dir}:/stream" \
+    --link "${NAME}":postgres \
+    "${IMAGE}" \
+    make import source=/stream/export.sql.gz host=postgres
 [ "$(postgres make query-silent query='SELECT COUNT(*) FROM test')" = 1 ]
 [ "$(postgres make query-silent query='SELECT COUNT(*) FROM test1')" = 0 ]
 [ "$(postgres make query-silent query='SELECT COUNT(*) FROM test2')" = 0 ]
