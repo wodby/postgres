@@ -29,6 +29,11 @@ backup:
 	$(call check_defined, filepath)
 	backup $(user) $(password) $(host) $(db) $(filepath) "$(ignore)" $(nice) $(ionice)
 
+backup-stream:
+	$(call check_defined, stream_path, status_path)
+	backup_stream $(user) $(password) $(host) $(db) $(stream_path) $(status_path) "$(ignore)" $(nice) $(ionice)
+.PHONY: backup-stream
+
 query:
 	$(call check_defined, query)
 	PGPASSWORD=$(password) psql -U$(user) -h$(host) -d$(db) -c "$(query)"

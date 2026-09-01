@@ -177,6 +177,50 @@ echo -n "Checking ignored tables from backup/import... "
 [ "$(postgres make query-silent query='SELECT COUNT(*) FROM test2')" = 0 ]
 echo "OK"
 
+echo -n "Running streaming backup and restore... "
+stream_dir="$(mktemp -d)"
+chmod 777 "${stream_dir}"
+docker run --rm \
+    -e POSTGRES_USER -e POSTGRES_PASSWORD -e POSTGRES_DB \
+    -v "${stream_dir}:/stream" \
+    --link "${NAME}":postgres \
+    "${IMAGE}" bash -ceu '
+        mkfifo /stream/data
+        touch /stream/status
+        chmod 666 /stream/data /stream/status
+        cat /stream/data > /stream/export.sql.gz &
+        reader=$!
+        make -f /usr/local/bin/actions.mk backup-stream \
+            host=postgres \
+            ignore="test1;test2" \
+            stream_path=/stream/data \
+            status_path=/stream/status
+        wait "${reader}"
+        test "$(cat /stream/status)" = 0
+
+        rm /stream/data /stream/status
+        mkfifo /stream/data
+        touch /stream/status
+        chmod 666 /stream/data /stream/status
+        cat /stream/data >/dev/null &
+        reader=$!
+        if make -f /usr/local/bin/actions.mk backup-stream \
+            host=postgres \
+            db=missing_stream_backup_database \
+            stream_path=/stream/data \
+            status_path=/stream/status; then
+            exit 1
+        fi
+        wait "${reader}"
+        test "$(cat /stream/status)" != 0
+    '
+postgres make import source="${stream_dir}/export.sql.gz"
+[ "$(postgres make query-silent query='SELECT COUNT(*) FROM test')" = 1 ]
+[ "$(postgres make query-silent query='SELECT COUNT(*) FROM test1')" = 0 ]
+[ "$(postgres make query-silent query='SELECT COUNT(*) FROM test2')" = 0 ]
+rm -rf "${stream_dir}"
+echo "OK"
+
 echo -n "Running import from URL source (.zip)... "
 postgres make import source="https://s3.amazonaws.com/wodby-sample-files/postgres-import-test/export.zip"
 echo "OK"
