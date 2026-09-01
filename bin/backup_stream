@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+
+set -eEo pipefail
+
+if [[ -n "${DEBUG}" ]]; then
+    set -x
+fi
+
+user=$1
+password=$2
+host=$3
+db=$4
+stream_path=$5
+status_path=$6
+exclude_tables=$7
+nice=$8
+ionice=$9
+
+write_status() {
+    exit_code=$?
+    status_tmp="${status_path}.tmp.$$"
+    printf '%s\n' "${exit_code}" > "${status_tmp}"
+    mv "${status_tmp}" "${status_path}"
+}
+trap write_status EXIT
+
+# Open the FIFO before any database work so the uploader receives EOF even if
+# preparing the dump fails before the first byte is produced.
+exec 3> "${stream_path}"
+
+ignore=()
+
+IFS=';' read -ra ADDR <<< "${exclude_tables}"
+for table in "${ADDR[@]}"; do
+    ignore+=("--exclude-table-data=${table}")
+done
+
+PGPASSWORD="${password}" \
+    nice -n "${nice}" ionice -c2 -n "${ionice}" \
+    pg_dump "${ignore[@]}" -U"${user}" -h"${host}" "${db}" | gzip >&3
