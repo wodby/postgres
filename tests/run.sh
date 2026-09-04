@@ -29,6 +29,14 @@ ALTER TABLE managed_import_test OWNER TO managed_user;
 INSERT INTO managed_import_test VALUES ('imported');
 SQL
 
+image_default_extensions="$(
+	docker run --rm --entrypoint sh "${IMAGE}" -c 'printf %s "${POSTGRES_DB_EXTENSIONS}"'
+)"
+if tr ',' '\n' <<< "${image_default_extensions}" | grep -qx vector; then
+	echo "pgvector must be bundled but disabled by default" >&2
+	exit 1
+fi
+
 required_extensions=(pg_trgm)
 if [[ "${TEST_POSTGIS}" == "1" ]]; then
 	required_extensions+=(
