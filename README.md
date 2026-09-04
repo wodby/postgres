@@ -21,7 +21,6 @@ Supported tags and respective `Dockerfile` links:
 
 - `18`, `latest` [_(Dockerfile)_]
 - `18-postgis`, `postgis` [_(Dockerfile)_]
-- `18-pgvector`, `pgvector` [_(Dockerfile)_]
 - `17` [_(Dockerfile)_]
 - `17-postgis` [_(Dockerfile)_]
 - `16` [_(Dockerfile)_]
@@ -33,16 +32,25 @@ Supported tags and respective `Dockerfile` links:
 
 All images built for `linux/amd64` and `linux/arm64`
 
-## pgvector Tags
+## Bundled pgvector
 
-The `18-pgvector` and `pgvector` tags bundle pgvector `0.8.6` and default
-`POSTGRES_DB_EXTENSIONS` to `vector`. The configured extensions are installed
-both in the initial database and in databases created later through the
-`create-db` orchestration action.
+All PostgreSQL and PostGIS images bundle pgvector `0.8.6`. The `vector`
+extension is not enabled by default. Add it to `POSTGRES_DB_EXTENSIONS` when
+needed:
+
+```bash
+docker run --rm \
+  -e POSTGRES_PASSWORD=password \
+  -e POSTGRES_DB_EXTENSIONS=vector \
+  wodby/postgres:18
+```
+
+Configured extensions are installed both in the initial database and in
+databases created later through the `create-db` orchestration action.
 
 ## PostGIS Tags
 
-Plain tags (`18`, `17`, and so on) stay lean and do not include PostGIS.
+Plain tags (`18`, `17`, and so on) do not include PostGIS.
 
 PostGIS tags (`18-postgis`, `17-postgis`, and so on) bundle PostGIS and default `POSTGRES_DB_EXTENSIONS` to:
 

@@ -28,7 +28,6 @@ jobs:
           [
             {"key": "postgres18", "version": "${{ env.POSTGRES18 }}", "latest": "latest", "latest_major": "1", "with_postgis": "0", "tag_suffix": ""},
             {"key": "postgres18-postgis", "version": "${{ env.POSTGRES18 }}", "latest": "postgis", "latest_major": "1", "with_postgis": "1", "tag_suffix": "-postgis"},
-            {"key": "postgres18-pgvector", "version": "${{ env.POSTGRES18 }}", "latest": "pgvector", "latest_major": "1", "with_postgis": "0", "with_pgvector": "1", "tag_suffix": "-pgvector"},
             {"key": "postgres17", "version": "${{ env.POSTGRES17 }}", "latest": "", "latest_major": "1", "with_postgis": "0", "tag_suffix": ""},
             {"key": "postgres17-postgis", "version": "${{ env.POSTGRES17 }}", "latest": "", "latest_major": "1", "with_postgis": "1", "tag_suffix": "-postgis"},
             {"key": "postgres16", "version": "${{ env.POSTGRES16 }}", "latest": "", "latest_major": "1", "with_postgis": "0", "tag_suffix": ""},
@@ -65,7 +64,6 @@ jobs:
         env:
           POSTGRES_VER: ${{ matrix.pg.version }}
           WITH_POSTGIS: ${{ matrix.pg.with_postgis }}
-          WITH_PGVECTOR: ${{ matrix.pg.with_pgvector }}
           ARCH: ${{ matrix.arch }}
         run: |
           make
