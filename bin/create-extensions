@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+if [[ -n "${DEBUG:-}" ]]; then
+    set -x
+fi
+
+database="${1:-${POSTGRES_DB:-}}"
+host="${2:-}"
+extensions="${POSTGRES_DB_EXTENSIONS:-}"
+
+if [[ -z "${database}" ]]; then
+    echo "Database name is required to create extensions" >&2
+    exit 1
+fi
+
+if [[ -z "${extensions}" ]]; then
+    echo "No PostgreSQL extensions configured for database ${database}"
+    exit 0
+fi
+
+psql_args=(-v ON_ERROR_STOP=1 -U "${POSTGRES_USER}" -d "${database}")
+if [[ -n "${host}" ]]; then
+    psql_args+=(-h "${host}")
+fi
+
+while IFS= read -r extension; do
+    extension="$(sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' <<< "${extension}")"
+    if [[ -z "${extension}" ]]; then
+        continue
+    fi
+    if [[ ! "${extension}" =~ ^[A-Za-z0-9_-]+$ ]]; then
+        echo "Invalid PostgreSQL extension name: ${extension}" >&2
+        exit 1
+    fi
+
+    echo "Creating PostgreSQL extension ${extension} in database ${database}"
+    psql "${psql_args[@]}" -c "CREATE EXTENSION IF NOT EXISTS \"${extension}\";"
+done < <(tr ',' '\n' <<< "${extensions}")

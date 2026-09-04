@@ -21,6 +21,7 @@ Supported tags and respective `Dockerfile` links:
 
 - `18`, `latest` [_(Dockerfile)_]
 - `18-postgis`, `postgis` [_(Dockerfile)_]
+- `18-pgvector`, `pgvector` [_(Dockerfile)_]
 - `17` [_(Dockerfile)_]
 - `17-postgis` [_(Dockerfile)_]
 - `16` [_(Dockerfile)_]
@@ -31,6 +32,13 @@ Supported tags and respective `Dockerfile` links:
 - `14-postgis` [_(Dockerfile)_]
 
 All images built for `linux/amd64` and `linux/arm64`
+
+## pgvector Tags
+
+The `18-pgvector` and `pgvector` tags bundle pgvector `0.8.6` and default
+`POSTGRES_DB_EXTENSIONS` to `vector`. The configured extensions are installed
+both in the initial database and in databases created later through the
+`create-db` orchestration action.
 
 ## PostGIS Tags
 
@@ -83,6 +91,7 @@ Bundled PostGIS versions for the `*-postgis` tags:
 | `POSTGRES_MIN_WAL_SIZE`                 | `1GB`                | >=9.5              |
 | `POSTGRES_SHARED_BUFFERS`               | `512MB`              |                    |
 | `POSTGRES_SHARED_MEMORY_TYPE`           | `posix`              | >=9.4              |
+| `POSTGRES_SHARED_PRELOAD_LIBRARIES`     |                      | Comma-separated libraries loaded when PostgreSQL starts |
 | `POSTGRES_TIMEZONE`                     | `UTC`                |                    |
 | `POSTGRES_PASSWORD`                     |                      | REQUIRED           |
 | `POSTGRES_USER`                         | `postgres`           |                    |

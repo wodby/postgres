@@ -50,6 +50,7 @@ create-db:
 	$(eval override name := $(shell echo "${name}" | tr -d \'\"))
 	PGPASSWORD=$(POSTGRES_PASSWORD) psql -U$(POSTGRES_USER) -h$(host) -d postgres -c "CREATE DATABASE \"$(name)\" ENCODING '$(encoding)' LC_COLLATE '$(lc_collate)' LC_CTYPE '$(lc_ctype)';" 2>&1 | grep -v "already exists" || true
 	PGPASSWORD=$(POSTGRES_PASSWORD) psql -U$(POSTGRES_USER) -h$(host) -d "$(name)" -c "CREATE SCHEMA IF NOT EXISTS \"$(name)\";"
+	PGPASSWORD=$(POSTGRES_PASSWORD) create-extensions "$(name)" "$(host)"
 .PHONY: create-db
 
 drop-db:
