@@ -32,6 +32,17 @@ Supported tags and respective `Dockerfile` links:
 
 All images built for `linux/amd64` and `linux/arm64`
 
+## pgvector
+
+All PostgreSQL images bundle pgvector `0.8.1`. The extension remains opt-in and can be created together with PostgreSQL's built-in extensions during initialization:
+
+```bash
+docker run --rm \
+  -e POSTGRES_PASSWORD=password \
+  -e POSTGRES_DB_EXTENSIONS=hstore,pg_trgm,unaccent,vector \
+  wodby/postgres:18
+```
+
 ## PostGIS Tags
 
 Plain tags (`18`, `17`, and so on) stay lean and do not include PostGIS.
@@ -69,7 +80,7 @@ Bundled PostGIS versions for the `*-postgis` tags:
 | `POSTGRES_DEFAULT_STATISTICS_TARGET`    | `100`                |                    |
 | `POSTGRES_DEFAULT_TEXT_SEARCH_CONFIG`   | `pg_catalog.english` |                    |
 | `POSTGRES_EFFECTIVE_CACHE_SIZE`         | `1GB`                |                    |
-| `POSTGRES_DB_EXTENSIONS`                |                      | Separated by comma |
+| `POSTGRES_DB_EXTENSIONS`                |                      | Comma-separated extensions created during initialization and by `make create-db` |
 | `POSTGRES_INITDB_PASSWORD`              |                      | Password for the optional role created before initialization imports |
 | `POSTGRES_INITDB_USER`                  |                      | Optional role created before initialization imports |
 | `POSTGRES_LC_MESSAGES`                  | `en_US.utf8`         |                    |

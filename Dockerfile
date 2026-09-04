@@ -4,6 +4,8 @@ FROM postgres:${POSTGRES_VER:-18}-alpine
 
 ARG POSTGRES_VER
 ARG POSTGRES_MAJOR_VER
+ARG PGVECTOR_VERSION
+ARG PGVECTOR_SHA256
 ARG WITH_POSTGIS=0
 ARG POSTGIS_VERSION
 ARG POSTGIS_SHA256
@@ -17,6 +19,7 @@ ENV POSTGRES_VER="${POSTGRES_VER}" \
     # http://www.databasesoup.com/2016/05/changing-postgresql-version-numbering.html
     POSTGRES_MAJOR_VER="${POSTGRES_MAJOR_VER}" \
     POSTGRES_DB_EXTENSIONS="${POSTGRES_DB_EXTENSIONS_DEFAULT}" \
+    PGVECTOR_VERSION="${PGVECTOR_VERSION}" \
     POSTGIS_VERSION="${POSTGIS_VERSION}" \
     POSTGIS_SHA256="${POSTGIS_SHA256}" \
     POSTGRES_USER="postgres"
@@ -28,6 +31,21 @@ RUN set -ex; \
         pwgen \
         tar \
         wget; \
+    test -n "${PGVECTOR_VERSION}"; \
+    test -n "${PGVECTOR_SHA256}"; \
+    apk add --no-cache -t .pgvector-build-deps \
+        gcc \
+        musl-dev \
+        ${DOCKER_PG_LLVM_DEPS}; \
+    wget -O /tmp/pgvector.tar.gz "https://github.com/pgvector/pgvector/archive/refs/tags/v${PGVECTOR_VERSION}.tar.gz"; \
+    echo "${PGVECTOR_SHA256} */tmp/pgvector.tar.gz" | sha256sum -c -; \
+    mkdir -p /usr/src/pgvector; \
+    tar --extract --file /tmp/pgvector.tar.gz --directory /usr/src/pgvector --strip-components 1; \
+    rm /tmp/pgvector.tar.gz; \
+    make -C /usr/src/pgvector OPTFLAGS=""; \
+    make -C /usr/src/pgvector install; \
+    rm -rf /usr/src/pgvector; \
+    apk del .pgvector-build-deps; \
     if [ "${WITH_POSTGIS}" = "1" ]; then \
         test -n "${POSTGIS_VERSION}"; \
         test -n "${POSTGIS_SHA256}"; \

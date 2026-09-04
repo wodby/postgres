@@ -1,6 +1,8 @@
 -include env_make
 
 POSTGRES_VER ?= 18.6
+PGVECTOR_VERSION ?= 0.8.1
+PGVECTOR_SHA256 ?= a9094dfb85ccdde3cbb295f1086d4c71a20db1d26bf1d6c39f07a7d164033eb4
 WITH_POSTGIS ?= 0
 
 POSTGIS_DEFAULT_EXTENSIONS = postgis,postgis_raster,postgis_sfcgal,fuzzystrmatch,address_standardizer,address_standardizer_data_us,postgis_tiger_geocoder,postgis_topology
@@ -57,6 +59,8 @@ build:
 	docker build -t $(REPO):$(TAG) \
 		--build-arg POSTGRES_VER=$(POSTGRES_VER) \
 		--build-arg POSTGRES_MAJOR_VER=$(POSTGRES_MAJOR_VER) \
+		--build-arg PGVECTOR_VERSION=$(PGVECTOR_VERSION) \
+		--build-arg PGVECTOR_SHA256=$(PGVECTOR_SHA256) \
 		--build-arg WITH_POSTGIS=$(WITH_POSTGIS) \
 		--build-arg POSTGIS_VERSION=$(POSTGIS_VERSION) \
 		--build-arg POSTGIS_SHA256=$(POSTGIS_SHA256) \
@@ -67,6 +71,8 @@ buildx-build:
 	docker buildx build --platform $(PLATFORM) -t $(REPO):$(TAG) \
 		--build-arg POSTGRES_VER=$(POSTGRES_VER) \
 		--build-arg POSTGRES_MAJOR_VER=$(POSTGRES_MAJOR_VER) \
+		--build-arg PGVECTOR_VERSION=$(PGVECTOR_VERSION) \
+		--build-arg PGVECTOR_SHA256=$(PGVECTOR_SHA256) \
 		--build-arg WITH_POSTGIS=$(WITH_POSTGIS) \
 		--build-arg POSTGIS_VERSION=$(POSTGIS_VERSION) \
 		--build-arg POSTGIS_SHA256=$(POSTGIS_SHA256) \
@@ -79,6 +85,8 @@ buildx-push:
 	docker buildx build --platform $(PLATFORM) --push -t $(REPO):$(TAG) \
 		--build-arg POSTGRES_VER=$(POSTGRES_VER) \
 		--build-arg POSTGRES_MAJOR_VER=$(POSTGRES_MAJOR_VER) \
+		--build-arg PGVECTOR_VERSION=$(PGVECTOR_VERSION) \
+		--build-arg PGVECTOR_SHA256=$(PGVECTOR_SHA256) \
 		--build-arg WITH_POSTGIS=$(WITH_POSTGIS) \
 		--build-arg POSTGIS_VERSION=$(POSTGIS_VERSION) \
 		--build-arg POSTGIS_SHA256=$(POSTGIS_SHA256) \

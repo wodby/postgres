@@ -29,7 +29,7 @@ ALTER TABLE managed_import_test OWNER TO managed_user;
 INSERT INTO managed_import_test VALUES ('imported');
 SQL
 
-required_extensions=(pg_trgm)
+required_extensions=(hstore pg_trgm unaccent vector)
 if [[ "${TEST_POSTGIS}" == "1" ]]; then
 	required_extensions+=(
 		postgis
@@ -43,6 +43,7 @@ if [[ "${TEST_POSTGIS}" == "1" ]]; then
 	)
 fi
 db_extensions="$(IFS=,; echo "${required_extensions[*]}")"
+export POSTGRES_DB_EXTENSIONS="${db_extensions}"
 
 cid="$(
 	docker run -d \
@@ -60,7 +61,7 @@ cid="$(
 
 postgres() {
 	docker run --rm -i \
-	    -e POSTGRES_USER -e POSTGRES_PASSWORD -e POSTGRES_DB -e DEBUG \
+	    -e POSTGRES_USER -e POSTGRES_PASSWORD -e POSTGRES_DB -e POSTGRES_DB_EXTENSIONS -e DEBUG \
 	    -v /tmp:/mnt \
 	    --link "${NAME}":"postgres" \
 	    "${IMAGE}" \
@@ -80,6 +81,12 @@ installed_extensions="$(postgres make query-silent query='SELECT extname FROM pg
 for extension in "${required_extensions[@]}"; do
 	grep -qx "${extension}" <<< "${installed_extensions}"
 done
+echo "OK"
+
+echo -n "Checking pgvector... "
+postgres make query query='CREATE TABLE vector_smoke (embedding vector(3))'
+postgres make query query="INSERT INTO vector_smoke VALUES ('[1,2,3]'), ('[4,5,6]')"
+[ "$(postgres make query-silent query="SELECT embedding::text FROM vector_smoke ORDER BY embedding <-> '[3,1,2]' LIMIT 1")" = '[1,2,3]' ]
 echo "OK"
 
 if [[ "${TEST_POSTGIS}" == "1" ]]; then
@@ -102,6 +109,10 @@ echo -n "Create DB... "
 postgres make create-db name='superdatabase' encoding='UTF8' lc_collate='en_US.utf8' lc_ctype='en_US.utf8'
 same_name_schema_query="SELECT EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'superdatabase')"
 [ "$(postgres make query-silent db='superdatabase' query="${same_name_schema_query}")" = 't' ]
+created_db_extensions="$(postgres make query-silent db='superdatabase' query='SELECT extname FROM pg_extension ORDER BY 1')"
+for extension in "${required_extensions[@]}"; do
+	grep -qx "${extension}" <<< "${created_db_extensions}"
+done
 echo "OK"
 
 echo -n "Create user... "
