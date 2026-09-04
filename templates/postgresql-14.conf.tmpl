@@ -7,6 +7,7 @@ shared_buffers = {{ getenv "POSTGRES_SHARED_BUFFERS" "512MB" }}
 work_mem = {{ getenv "POSTGRES_WORK_MEM" "5MB" }}
 maintenance_work_mem = {{ getenv "POSTGRES_MAINTENANCE_WORK_MEM" "128MB" }}
 dynamic_shared_memory_type = {{ getenv "POSTGRES_SHARED_MEMORY_TYPE" "posix" }}
+shared_preload_libraries = '{{ getenv "POSTGRES_SHARED_PRELOAD_LIBRARIES" "" }}'
 
 wal_buffers = {{ getenv "POSTGRES_WAL_BUFFERS" "16MB" }}
 max_wal_size = {{ getenv "POSTGRES_MAX_WAL_SIZE" "2GB" }}

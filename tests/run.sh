@@ -42,7 +42,12 @@ if [[ "${TEST_POSTGIS}" == "1" ]]; then
 		postgis_topology
 	)
 fi
+if [[ "${TEST_PGVECTOR}" == "1" ]]; then
+	required_extensions+=(pg_stat_statements pgcrypto vector)
+	export POSTGRES_SHARED_PRELOAD_LIBRARIES='pg_stat_statements'
+fi
 db_extensions="$(IFS=,; echo "${required_extensions[*]}")"
+export POSTGRES_DB_EXTENSIONS="${db_extensions}"
 
 cid="$(
 	docker run -d \
@@ -51,7 +56,8 @@ cid="$(
 		-e POSTGRES_DB \
 		-e POSTGRES_INITDB_USER \
 		-e POSTGRES_INITDB_PASSWORD \
-		-e POSTGRES_DB_EXTENSIONS="${db_extensions}" \
+		-e POSTGRES_DB_EXTENSIONS \
+		-e POSTGRES_SHARED_PRELOAD_LIBRARIES \
 		-e DEBUG \
 		-v "${import_dir}:/wodby/import:ro" \
 		--name "${NAME}" \
@@ -60,7 +66,7 @@ cid="$(
 
 postgres() {
 	docker run --rm -i \
-	    -e POSTGRES_USER -e POSTGRES_PASSWORD -e POSTGRES_DB -e DEBUG \
+	    -e POSTGRES_USER -e POSTGRES_PASSWORD -e POSTGRES_DB -e POSTGRES_DB_EXTENSIONS -e DEBUG \
 	    -v /tmp:/mnt \
 	    --link "${NAME}":"postgres" \
 	    "${IMAGE}" \
@@ -102,6 +108,10 @@ echo -n "Create DB... "
 postgres make create-db name='superdatabase' encoding='UTF8' lc_collate='en_US.utf8' lc_ctype='en_US.utf8'
 same_name_schema_query="SELECT EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'superdatabase')"
 [ "$(postgres make query-silent db='superdatabase' query="${same_name_schema_query}")" = 't' ]
+created_db_extensions="$(postgres make query-silent db='superdatabase' query='SELECT extname FROM pg_extension ORDER BY 1')"
+for extension in "${required_extensions[@]}"; do
+	grep -qx "${extension}" <<< "${created_db_extensions}"
+done
 echo "OK"
 
 echo -n "Create user... "
@@ -122,6 +132,12 @@ grant_search_path_query="SELECT current_schema() = 'superdatabase' AND POSITION(
 [ "$(postgres make query-silent query="${grant_db_privilege_query}")" = 't' ]
 [ "$(postgres make query-silent db='superdatabase' query="${grant_schema_privilege_query}")" = 't' ]
 [ "$(postgres make query-silent user='userpg123' password='bad-password' db='superdatabase' query="${grant_search_path_query}")" = 't' ]
+if [[ "${TEST_PGVECTOR}" == "1" ]]; then
+	[ "$(postgres make query-silent query='SELECT COUNT(*) >= 0 FROM pg_stat_statements')" = 't' ]
+	postgres make query-silent user='userpg123' password='bad-password' db='superdatabase' query='CREATE TABLE vector_items (embedding vector(3))' >/dev/null
+	postgres make query-silent user='userpg123' password='bad-password' db='superdatabase' query="INSERT INTO vector_items VALUES ('[1,2,3]'), ('[4,5,6]')" >/dev/null
+	[ "$(postgres make query-silent user='userpg123' password='bad-password' db='superdatabase' query="SELECT embedding::text FROM vector_items ORDER BY embedding <-> '[3,1,2]' LIMIT 1")" = '[1,2,3]' ]
+fi
 echo "OK"
 
 echo -n "Revoke user... "

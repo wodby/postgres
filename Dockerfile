@@ -7,6 +7,9 @@ ARG POSTGRES_MAJOR_VER
 ARG WITH_POSTGIS=0
 ARG POSTGIS_VERSION
 ARG POSTGIS_SHA256
+ARG WITH_PGVECTOR=0
+ARG PGVECTOR_VERSION
+ARG PGVECTOR_SHA256
 ARG POSTGRES_DB_EXTENSIONS_DEFAULT=""
 ARG NPROC
 
@@ -19,6 +22,8 @@ ENV POSTGRES_VER="${POSTGRES_VER}" \
     POSTGRES_DB_EXTENSIONS="${POSTGRES_DB_EXTENSIONS_DEFAULT}" \
     POSTGIS_VERSION="${POSTGIS_VERSION}" \
     POSTGIS_SHA256="${POSTGIS_SHA256}" \
+    PGVECTOR_VERSION="${PGVECTOR_VERSION}" \
+    PGVECTOR_SHA256="${PGVECTOR_SHA256}" \
     POSTGRES_USER="postgres"
 
 RUN set -ex; \
@@ -89,6 +94,34 @@ RUN set -ex; \
         su postgres -c 'pg_ctl -D /tmp/postgis-smoke --mode=immediate stop'; \
         rm -rf /tmp/postgis-smoke /tmp/postgis.log /usr/src/postgis /tmp/postgis-version.txt; \
         apk del .postgres-build-deps; \
+    fi; \
+    if [ "${WITH_PGVECTOR}" = "1" ]; then \
+        test -n "${PGVECTOR_VERSION}"; \
+        test -n "${PGVECTOR_SHA256}"; \
+        apk add --no-cache -t .pgvector-build-deps \
+            build-base \
+            ${DOCKER_PG_LLVM_DEPS}; \
+        wget -O /tmp/pgvector.tar.gz "https://github.com/pgvector/pgvector/archive/refs/tags/v${PGVECTOR_VERSION}.tar.gz"; \
+        echo "${PGVECTOR_SHA256} */tmp/pgvector.tar.gz" | sha256sum -c -; \
+        mkdir -p /usr/src/pgvector; \
+        tar --extract --file /tmp/pgvector.tar.gz --directory /usr/src/pgvector --strip-components 1; \
+        rm /tmp/pgvector.tar.gz; \
+        cd /usr/src/pgvector; \
+        make clean; \
+        make OPTFLAGS="" -j"${NPROC:-$(nproc)}"; \
+        make install; \
+        mkdir -p /usr/share/doc/pgvector; \
+        cp LICENSE README.md /usr/share/doc/pgvector/; \
+        mkdir -p /tmp/pgvector-smoke; \
+        chown -R postgres:postgres /tmp/pgvector-smoke; \
+        su postgres -c 'pg_ctl -D /tmp/pgvector-smoke init'; \
+        su postgres -c 'pg_ctl -D /tmp/pgvector-smoke -l /tmp/pgvector.log -o "-F" start'; \
+        su postgres -c 'psql -c "CREATE EXTENSION IF NOT EXISTS vector;"'; \
+        su postgres -c 'psql -tAc "SELECT extversion FROM pg_extension WHERE extname = '\''vector'\'';"' >/tmp/pgvector-version.txt; \
+        grep -qx "${PGVECTOR_VERSION}" /tmp/pgvector-version.txt; \
+        su postgres -c 'pg_ctl -D /tmp/pgvector-smoke --mode=immediate stop'; \
+        rm -rf /tmp/pgvector-smoke /tmp/pgvector.log /usr/src/pgvector /tmp/pgvector-version.txt; \
+        apk del .pgvector-build-deps; \
     fi; \
     \
     dockerplatform=${TARGETPLATFORM:-linux/amd64};\
