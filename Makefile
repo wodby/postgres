@@ -1,6 +1,13 @@
 -include env_make
 
+WITH_SUPABASE ?= 0
+ifeq ($(WITH_SUPABASE),1)
+POSTGRES_VER ?= 17.6
+DOCKERFILE = Dockerfile.supabase
+else
 POSTGRES_VER ?= 18.6
+DOCKERFILE = Dockerfile
+endif
 WITH_POSTGIS ?= 0
 
 PGVECTOR_VERSION ?= 0.8.6
@@ -33,6 +40,16 @@ TAG_SUFFIX_DEFAULT := $(TAG_SUFFIX_DEFAULT)-postgis
 POSTGRES_DB_EXTENSIONS_DEFAULT_VALUE := $(POSTGIS_DEFAULT_EXTENSIONS)
 endif
 
+ifeq ($(WITH_SUPABASE),1)
+ifneq ($(POSTGRES_VER),17.6)
+$(error Supabase currently supports only the pinned PostgreSQL 17.6 bundle)
+endif
+ifneq ($(WITH_POSTGIS),0)
+$(error WITH_SUPABASE and WITH_POSTGIS cannot be combined)
+endif
+TAG_SUFFIX_DEFAULT := -supabase
+endif
+
 TAG_SUFFIX ?= $(TAG_SUFFIX_DEFAULT)
 POSTGRES_DB_EXTENSIONS_DEFAULT ?= $(POSTGRES_DB_EXTENSIONS_DEFAULT_VALUE)
 
@@ -60,7 +77,7 @@ endif
 default: build
 
 build:
-	docker build -t $(REPO):$(TAG) \
+	docker build -f $(DOCKERFILE) -t $(REPO):$(TAG) \
 		--build-arg POSTGRES_VER=$(POSTGRES_VER) \
 		--build-arg POSTGRES_MAJOR_VER=$(POSTGRES_MAJOR_VER) \
 		--build-arg WITH_POSTGIS=$(WITH_POSTGIS) \
@@ -72,7 +89,7 @@ build:
 		./
 
 buildx-build:
-	docker buildx build --platform $(PLATFORM) -t $(REPO):$(TAG) \
+	docker buildx build -f $(DOCKERFILE) --platform $(PLATFORM) -t $(REPO):$(TAG) \
 		--build-arg POSTGRES_VER=$(POSTGRES_VER) \
 		--build-arg POSTGRES_MAJOR_VER=$(POSTGRES_MAJOR_VER) \
 		--build-arg WITH_POSTGIS=$(WITH_POSTGIS) \
@@ -86,7 +103,7 @@ buildx-build:
 		./
 
 buildx-push:
-	docker buildx build --platform $(PLATFORM) --push -t $(REPO):$(TAG) \
+	docker buildx build -f $(DOCKERFILE) --platform $(PLATFORM) --push -t $(REPO):$(TAG) \
 		--build-arg POSTGRES_VER=$(POSTGRES_VER) \
 		--build-arg POSTGRES_MAJOR_VER=$(POSTGRES_MAJOR_VER) \
 		--build-arg WITH_POSTGIS=$(WITH_POSTGIS) \
@@ -105,7 +122,11 @@ buildx-imagetools-create:
 .PHONY: buildx-imagetools-create 
 
 test:
+ifeq ($(WITH_SUPABASE),1)
+	IMAGE=$(REPO):$(TAG) bash tests/supabase.sh
+else
 	cd ./tests && NAME=$(NAME) IMAGE=$(REPO):$(TAG) TEST_POSTGIS=$(WITH_POSTGIS) TEST_PGVECTOR=1 ./run.sh
+endif
 
 push:
 	docker push $(REPO):$(TAG)
