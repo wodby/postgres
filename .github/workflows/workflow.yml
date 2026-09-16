@@ -43,6 +43,7 @@ jobs:
   build:
     needs: setup
     strategy:
+      fail-fast: false
       matrix:
         pg: ${{ fromJson(needs.setup.outputs.pg-versions) }}
         arch:
@@ -60,7 +61,8 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-      - name: build and push
+      - name: Build and test
+        id: build-image
         env:
           POSTGRES_VER: ${{ matrix.pg.version }}
           WITH_POSTGIS: ${{ matrix.pg.with_postgis }}
@@ -68,7 +70,21 @@ jobs:
         run: |
           make
           make test
-          make push
+          echo "image=$(make --no-print-directory -s image-ref)" >> "$GITHUB_OUTPUT"
+      - name: Scan image
+        if: github.event_name == 'push'
+        uses: ./.github/actions/scout
+        with:
+          image: local://${{ steps.build-image.outputs.image }}
+          dockerhub-user: ${{ secrets.DOCKER_USERNAME }}
+          dockerhub-password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Push scanned architecture image
+        if: github.event_name == 'push'
+        env:
+          POSTGRES_VER: ${{ matrix.pg.version }}
+          WITH_POSTGIS: ${{ matrix.pg.with_postgis }}
+          ARCH: ${{ matrix.arch }}
+        run: make push
 
   push:
     runs-on: ubuntu-latest
