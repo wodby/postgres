@@ -25,7 +25,9 @@ ENV POSTGRES_VER="${POSTGRES_VER}" \
     PGVECTOR_SHA256="${PGVECTOR_SHA256}" \
     POSTGRES_USER="postgres"
 
+# Upgrade inherited packages even when their existing versions satisfy dependencies.
 RUN set -ex; \
+    apk upgrade --no-cache; \
     apk add --no-cache -t .postgres-run-deps \
         ca-certificates \
         make \
