@@ -21,7 +21,7 @@ if [[ "${GITHUB_REF}" == refs/heads/master || "${GITHUB_REF}" == refs/tags/* ]];
   if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
     image_revision="${GITHUB_REF##*/}"
     tags=("${minor_tag}-${image_revision}")
-    if [[ "${image_revision}" =~ ^r[1-9][0-9]*$ ]]; then
+    if [[ "${image_revision}" =~ ^r(0|[1-9][0-9]*)$ ]]; then
       # PostgreSQL's two-part version is complete. Its r0-based alias is
       # published after all builds; reserve the primary counter for the major.
       tags=("${major_tag}-${image_revision}")
