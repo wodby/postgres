@@ -14,10 +14,10 @@ if [[ "${GITHUB_REF}" == refs/heads/master || "${GITHUB_REF}" == refs/tags/* ]];
   fi
 
   if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
-    stability_tag="${GITHUB_REF##*/}"
-    tags=("${minor_tag}-${stability_tag}")
+    image_revision="${GITHUB_REF##*/}"
+    tags=("${minor_tag}-${image_revision}")
     if [[ -n "${LATEST_MAJOR}" ]]; then
-      tags+=("${major_tag}-${stability_tag}")
+      tags+=("${major_tag}-${image_revision}")
     fi
   elif [[ -n "${LATEST_ALIAS}" ]]; then
     tags+=("${LATEST_ALIAS}")
