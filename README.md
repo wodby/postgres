@@ -136,8 +136,9 @@ exist only while the dump is loaded. A dump that creates roles itself is loaded 
 
 ### Databases created by earlier releases
 
-Releases 1.40 to 1.47 created a schema named after the database and pointed each user's `search_path` at it. The next
-`create-db` or `grant-user-db` for such a database converts it: objects move to `public`, the users that had access
+Releases 1.40 to 1.47 created a schema named after the database and pointed each user's `search_path` at it.
+`adopt-dbs` converts every such database of a server and is meant to run once after the server is upgraded; the next
+`create-db` or `grant-user-db` for such a database converts it as well. A conversion means: objects move to `public`, the users that had access
 become members of the owner role, and the schema and the `search_path` settings are removed. Objects owned by roles
 that were never granted access are left alone.
 
@@ -165,6 +166,8 @@ commands:
       also creates the owner role of the database
     drop-db name
       also drops the owner role of the database
+    adopt-dbs
+      converts the databases created by earlier releases, leaves all others alone
     create-user username password
     drop-user username
     grant-user-db username db
@@ -190,7 +193,7 @@ default params values:
 `create-user` is safe to retry when the existing role accepts the requested password, but fails on a same-named role
 with different credentials rather than replacing it.
 
-`create-db`, `grant-user-db` and `revoke-user-db` are safe to retry. See [database access](#database-access) for what
+`create-db`, `grant-user-db`, `revoke-user-db` and `adopt-dbs` are safe to retry. See [database access](#database-access) for what
 they set up. `import` keeps the owner role and the users of the database it replaces.
 
 ## Deployment

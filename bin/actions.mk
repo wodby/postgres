@@ -59,6 +59,10 @@ drop-db:
 	db-layout drop-owner "$(name)" "$(host)"
 .PHONY: drop-db
 
+adopt-dbs:
+	db-layout adopt-all "$(host)"
+.PHONY: adopt-dbs
+
 create-user:
 	$(call check_defined, username, password)
 	$(eval override password := $(shell echo "${password}" | tr -d \'\"))

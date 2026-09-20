@@ -26,6 +26,7 @@ usage: db-layout <command> <database> [args...]
   create     <database> [host] [encoding] [lc_collate] [lc_ctype]
                                         create the database (if missing) with its owner role
   adopt      <database> [host]          bring an existing database to the current layout
+  adopt-all  [host]                     adopt every managed database of the server
   managed    <database> [host]          succeed if the database is owned by its owner role
   recreate   <database> [host]          drop and recreate a managed database, keeping its access rules
   lock-down  <database> [host]          allow only members of the owner role to connect
@@ -471,6 +472,39 @@ SQL
     fi
 }
 
+# Converts whatever an upgrade of the server finds. Only databases this image set up are touched:
+# those owned by their owner role, and those of earlier releases, which carry a schema named after
+# themselves. A busy table can make a conversion time out, so it gets a few attempts; a database
+# that still fails keeps working as before and does not stop the others.
+adopt_all() {
+    local name attempt failed=0 names
+    mapfile -t names < <(value postgres <<'SQL'
+SELECT datname FROM pg_catalog.pg_database
+WHERE datallowconn AND NOT datistemplate AND datname <> 'postgres'
+ORDER BY datname;
+SQL
+    )
+    for name in "${names[@]}"; do
+        db="${name}"
+        owner="$(owner_role "${db}")"
+        legacy="${db}"
+        if ! is_managed && ! legacy_schema_exists; then
+            echo "Database ${db} is not managed; leaving it alone"
+            continue
+        fi
+        for attempt in 1 2 3; do
+            if "$0" adopt "${db}" "${host}"; then
+                continue 2
+            fi
+            echo "Attempt ${attempt} to update database ${db} failed" >&2
+            sleep "${POSTGRES_LAYOUT_RETRY_PAUSE:-5}"
+        done
+        failed=1
+    done
+    legacy=''
+    return "${failed}"
+}
+
 # The database is already gone at this point, so a role that cannot be dropped must not fail the
 # action: repeating it could never succeed.
 drop_owner() {
@@ -484,6 +518,17 @@ SQL
 }
 
 command="${1:-}"
+if [[ "${command}" == 'adopt-all' ]]; then
+    host="${2:-}"
+    db=''
+    owner=''
+    member=''
+    legacy=''
+    lock_timeout="${POSTGRES_LAYOUT_LOCK_TIMEOUT:-10s}"
+    adopt_all
+    exit
+fi
+
 db="${2:-}"
 if [[ -z "${command}" || -z "${db}" ]]; then
     usage

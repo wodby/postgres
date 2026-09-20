@@ -236,6 +236,31 @@ postgres make drop-user username='legacyuser'
 postgres make drop-user username='legacyreader'
 echo "OK"
 
+echo -n "Adopt the databases of an upgraded server... "
+admin_sql postgres <<'SQL'
+CREATE DATABASE upgraded;
+CREATE DATABASE handmade;
+CREATE USER upgradeduser PASSWORD 'upgraded-password';
+SQL
+admin_sql upgraded <<'SQL'
+CREATE SCHEMA "upgraded";
+GRANT ALL PRIVILEGES ON DATABASE "upgraded" TO "upgradeduser";
+GRANT ALL PRIVILEGES ON SCHEMA "upgraded" TO "upgradeduser";
+ALTER ROLE "upgradeduser" IN DATABASE "upgraded" SET search_path TO "upgraded", public;
+SQL
+sql "${NAME}" upgradeduser upgraded-password upgraded <<< "CREATE TABLE kept (i int); INSERT INTO kept VALUES (1)"
+admin_sql handmade <<< 'CREATE SCHEMA mine; CREATE TABLE mine.kept (i int)'
+postgres make adopt-dbs
+[ "$(admin_sql upgraded <<< "SELECT schemaname, tableowner FROM pg_tables WHERE tablename = 'kept'")" = 'public|upgraded:owner' ]
+[ "$(sql "${NAME}" upgradeduser upgraded-password upgraded <<< 'SELECT current_user, count(*) FROM kept GROUP BY 1')" = 'upgraded:owner|1' ]
+# A database this image did not set up is none of its business.
+[ "$(admin_sql handmade <<< "SELECT schemaname FROM pg_tables WHERE tablename = 'kept'")" = 'mine' ]
+[ "$(admin_sql postgres <<< "SELECT count(*) FROM pg_roles WHERE rolname = 'handmade:owner'")" = '0' ]
+postgres make drop-db name='upgraded'
+postgres make drop-user username='upgradeduser'
+admin_sql postgres <<< 'DROP DATABASE handmade'
+echo "OK"
+
 echo -n "Drop DB... "
 postgres make drop-db name='superdatabase' encoding='UTF8' lc_collate='en_US.utf8' lc_ctype='en_US.utf8'
 dropped_db_query="SELECT EXISTS (SELECT 1 FROM pg_database WHERE datname = 'superdatabase')"
