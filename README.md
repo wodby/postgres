@@ -88,7 +88,7 @@ Bundled PostGIS versions for the `*-postgis` tags:
 | `POSTGRES_DB_EXTENSIONS`                |                      | Separated by comma |
 | `POSTGRES_INITDB_PASSWORD`              |                      | Password for the optional role created before initialization imports |
 | `POSTGRES_INITDB_USER`                  |                      | Optional role created before initialization imports |
-| `POSTGRES_LAYOUT_LOCK_TIMEOUT`          | `10s`                | How long `convert-db` waits for a lock, see [earlier releases](#databases-created-by-earlier-releases) |
+| `POSTGRES_LAYOUT_LOCK_TIMEOUT`          | `10s`                | How long `convert-db` waits for a lock |
 | `POSTGRES_LC_MESSAGES`                  | `en_US.utf8`         |                    |
 | `POSTGRES_LC_MONETARY`                  | `en_US.utf8`         |                    |
 | `POSTGRES_LC_NUMERIC`                   | `en_US.utf8`         |                    |
@@ -132,27 +132,6 @@ owner role.
 
 A dump may name roles this server does not have, as a plain `pg_dump` does for the owner of every object. Such roles
 exist only while the dump is loaded. A dump that creates roles itself is loaded as it is.
-
-### Databases created by earlier releases
-
-Releases 1.40 to 1.47 created a schema named after the database and pointed each user's `search_path` at it. Such a
-database keeps working with this release, but it is not converted on its own. To convert one, run:
-
-```
-make convert-db name=<db>
-```
-
-Objects move to `public`, the users that had access become members of the owner role, and the schema and the
-`search_path` settings are removed. Objects owned by roles that were never granted access are left alone.
-
-- The application keeps working during the conversion and needs no restart, as long as it does not name the schema.
-  An application that does, in its queries, in a `search_path` or schema setting, or in the body of a function, must
-  be changed to use `public`.
-- Objects move one statement at a time, each waiting up to `POSTGRES_LAYOUT_LOCK_TIMEOUT` for a lock. If a long
-  transaction makes a statement time out, the command fails, the database stays usable, and running it again
-  continues where it stopped.
-- A backup taken before the conversion keeps its objects in that schema. After restoring one, run `convert-db` again.
-  If it was imported into a database with another name, name the schema: `make convert-db name=<db> schema=<old db>`.
 
 ## Orchestration Actions
 
