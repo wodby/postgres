@@ -87,7 +87,9 @@ Bundled PostGIS versions for the `*-postgis` tags:
 | `POSTGRES_EFFECTIVE_CACHE_SIZE`         | `1GB`                |                    |
 | `POSTGRES_DB_EXTENSIONS`                |                      | Separated by comma |
 | `POSTGRES_INITDB_PASSWORD`              |                      | Password for the optional role created before initialization imports |
+| `POSTGRES_INITDB_SOURCE_DB`             |                      | Database an imported dump was taken from, see [imports](#imports) |
 | `POSTGRES_INITDB_USER`                  |                      | Optional role created before initialization imports |
+| `POSTGRES_LAYOUT_LOCK_TIMEOUT`          | `10s`                | How long a [conversion](#databases-created-by-earlier-releases) waits for a lock |
 | `POSTGRES_LC_MESSAGES`                  | `en_US.utf8`         |                    |
 | `POSTGRES_LC_MONETARY`                  | `en_US.utf8`         |                    |
 | `POSTGRES_LC_NUMERIC`                   | `en_US.utf8`         |                    |
@@ -106,9 +108,47 @@ Bundled PostGIS versions for the `*-postgis` tags:
 | `POSTGRES_WAL_BUFFERS`                  | `16MB`               |                    |
 | `POSTGRES_WORK_MEM`                     | `5MB`                |                    |
 
-Files mounted at `/wodby/import` are processed after the image's built-in initialization scripts. Set
-`POSTGRES_INITDB_USER` and `POSTGRES_INITDB_PASSWORD` together when imported SQL contains objects owned by a role that
-must exist before the import starts. These variables do not replace the `POSTGRES_USER` cluster administrator.
+`POSTGRES_INITDB_USER` and `POSTGRES_INITDB_PASSWORD` must be set together. They do not replace the `POSTGRES_USER`
+cluster administrator.
+
+## Database Access
+
+`create-db` gives every database its own owner role, named `<db>:owner`, which cannot log in. `grant-user-db` makes a
+user a member of that role and has the user's sessions in that database act as it. As a result:
+
+- Tables and other objects are created in the `public` schema, including by clients that select `public` themselves.
+- Every object belongs to the owner role, whichever user created it, so all users granted access to a database share
+  its data. In such a session `current_user` is the owner role and `session_user` is the user that logged in.
+- `revoke-user-db` removes all access. A revoked user owns nothing and can be dropped right away.
+- Only users granted access can connect to a database created by `create-db`.
+
+Backups contain no role names and no grants, so a backup can be imported into a database with a different name and
+different users. Access to imported data comes from the owner role of the database it is imported into.
+
+### Imports
+
+Files mounted at `/wodby/import` are loaded into `POSTGRES_DB` when the data directory is initialized. With
+`POSTGRES_INITDB_USER` set, that user is granted access to the database and the imported objects are handed to its
+owner role.
+
+A dump may name roles this server does not have, as a plain `pg_dump` does for the owner of every object. Such roles
+exist only while the dump is loaded. A dump that creates roles itself is loaded as it is.
+
+### Databases created by earlier releases
+
+Releases 1.40 to 1.47 created a schema named after the database and pointed each user's `search_path` at it. The next
+`create-db` or `grant-user-db` for such a database converts it: objects move to `public`, the users that had access
+become members of the owner role, and the schema and the `search_path` settings are removed. Objects owned by roles
+that were never granted access are left alone.
+
+- Applications keep working during the conversion and need no restart, as long as they do not name the schema.
+  An application that does, in its queries, in a `search_path` or schema setting, or in the body of a function, must
+  be changed to use `public`.
+- Objects move one statement at a time, each waiting up to `POSTGRES_LAYOUT_LOCK_TIMEOUT` for a lock. If a long
+  transaction makes a statement time out, the action fails, the database stays usable, and repeating the action
+  continues where it stopped.
+- A backup of such a database keeps its objects in the schema named after it. Importing that backup under another
+  database name requires `POSTGRES_INITDB_SOURCE_DB` set to the original name, so that schema is converted too.
 
 ## Orchestration Actions
 
@@ -122,17 +162,15 @@ commands:
     query query=<SELECT 1> [user password db host] 
     query-silent query=<SELECT 1> [user password db host]
     create-db name enconding lc_collate lc_ctype
-      also creates a schema with the same name inside the database
+      also creates the owner role of the database
     drop-db name
-      drops the database; the same-name schema is removed with it
+      also drops the owner role of the database
     create-user username password
     drop-user username
     grant-user-db username db
-      also grants access to the same-name schema inside that database
-      and sets the user's search_path for that database to "<db>", public
+      gives the user full access to the database and the objects of its other users
     revoke-user-db username db
-      also revokes access to the same-name schema inside that database
-      and resets the user's search_path for that database
+      removes all access of the user to the database
     check-ready [user password db host max_try wait_seconds delay_seconds]  
     
 default params values:
@@ -151,6 +189,9 @@ default params values:
 
 `create-user` is safe to retry when the existing role accepts the requested password, but fails on a same-named role
 with different credentials rather than replacing it.
+
+`create-db`, `grant-user-db` and `revoke-user-db` are safe to retry. See [database access](#database-access) for what
+they set up. `import` keeps the owner role and the users of the database it replaces.
 
 ## Deployment
 

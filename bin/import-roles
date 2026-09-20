@@ -1,0 +1,114 @@
+#!/usr/bin/env bash
+
+# Lets an initialization import load a dump that names roles this server does not have.
+#
+# A plain pg_dump records the owner of every object and every grant by role name, and the import is
+# stopped by the first statement that names a missing role. Such roles are created as placeholders
+# that cannot log in, and removed again once the dump is loaded: their objects are handed to the
+# administrator, from where a managed database passes them on to its owner role.
+
+set -euo pipefail
+
+if [[ -n "${DEBUG:-}" ]]; then
+    set -x
+fi
+
+state="${IMPORT_ROLES_STATE:-/tmp/wodby-import-placeholder-roles}"
+role_token='("([^"]|"")+"|[A-Za-z_][A-Za-z0-9_$]*)'
+
+run_psql() {
+    psql -X -q -v ON_ERROR_STOP=1 --username "${POSTGRES_USER}" --dbname "${POSTGRES_DB}" --no-password "$@"
+}
+
+# The same formats the PostgreSQL entrypoint loads; anything else is ignored by it as well.
+stream() {
+    case "$1" in
+        *.sql) cat "$1" ;;
+        *.sql.gz) gunzip -c "$1" ;;
+        *.sql.xz) xzcat "$1" ;;
+        *.sql.zst) zstd -dc "$1" ;;
+        *) return 0 ;;
+    esac
+}
+
+# pg_dump writes each of these statements on a single line. A data row that happens to look like
+# one only yields a placeholder nobody uses, which is removed with the others.
+unquote() {
+    sed -E 's/^"(.*)"$/\1/; s/""/"/g'
+}
+
+referenced_roles() {
+    grep -E '^(ALTER|GRANT|REVOKE) ' | sed -nE \
+        -e "s/^ALTER .* OWNER TO ${role_token};\$/\1/p" \
+        -e "s/^ALTER DEFAULT PRIVILEGES FOR ROLE ${role_token} .*/\1/p" \
+        -e "s/^(GRANT|REVOKE) .* (TO|FROM) ${role_token}( WITH GRANT OPTION| GRANTED BY .*)?;\$/\3/p" | unquote
+}
+
+created_roles() {
+    grep -E '^CREATE (ROLE|USER) ' | sed -nE "s/^CREATE (ROLE|USER) ${role_token}.*/\2/p" | unquote
+}
+
+create() {
+    local file names created missing role
+    names="$(mktemp)"
+    created="$(mktemp)"
+    : > "${state}"
+    for file in "$@"; do
+        stream "${file}" | referenced_roles >> "${names}" || true
+        stream "${file}" | created_roles >> "${created}" || true
+    done
+
+    # A role the dump creates itself must not exist beforehand.
+    missing="$(mktemp)"
+    awk 'FILENAME == ARGV[1] { created[$0] = 1; next } !($0 in created) && !seen[$0]++' "${created}" "${names}" > "${missing}"
+    while IFS= read -r role; do
+        case "${role}" in
+            '' | PUBLIC | CURRENT_USER | CURRENT_ROLE | SESSION_USER) continue ;;
+        esac
+        if [[ "$(run_psql -tA -v role="${role}" <<< "SELECT count(*) FROM pg_catalog.pg_roles WHERE rolname = :'role';")" == '0' ]]; then
+            echo "Creating placeholder for role ${role} named by the import"
+            run_psql -v role="${role}" <<'SQL'
+SELECT format('CREATE ROLE %I NOLOGIN', :'role')
+\gexec
+SQL
+            printf '%s\n' "${role}" >> "${state}"
+        fi
+    done < "${missing}"
+    rm -f "${names}" "${created}" "${missing}"
+}
+
+drop() {
+    local role
+    if [[ ! -s "${state}" ]]; then
+        rm -f "${state}"
+        return
+    fi
+    while IFS= read -r role; do
+        echo "Removing placeholder role ${role}"
+        # A dump that switches to another database can leave objects this cannot reach. The
+        # placeholder then stays: it cannot log in, and the import itself did succeed.
+        if ! run_psql -v role="${role}" -v admin="${POSTGRES_USER}" <<'SQL'
+REASSIGN OWNED BY :"role" TO :"admin";
+DROP OWNED BY :"role";
+DROP ROLE :"role";
+SQL
+        then
+            echo "Could not remove placeholder role ${role}; it has to be removed manually" >&2
+        fi
+    done < "${state}"
+    rm -f "${state}"
+}
+
+case "${1:-}" in
+    create)
+        shift
+        create "$@"
+        ;;
+    drop)
+        drop
+        ;;
+    *)
+        echo "usage: import-roles create <file>... | import-roles drop" >&2
+        exit 64
+        ;;
+esac

@@ -27,9 +27,11 @@ done
 mkdir -p "${tmp_dir}"
 cd "${tmp_dir}"
 
+# Role names differ between databases, so a dump that carries owners or grants cannot be restored
+# anywhere but where it was taken. Access is re-established from the owner role on import.
 PGPASSWORD="${password}" \
     nice -n "${nice}" ionice -c2 -n "${ionice}" \
-    pg_dump "${ignore[@]}" -U"${user}" -h"${host}" "${db}" > "${filename}"
+    pg_dump --no-owner --no-acl "${ignore[@]}" -U"${user}" -h"${host}" "${db}" > "${filename}"
 
 gzip "${filename}"
 mv "${filename}.gz" "${filepath}"
