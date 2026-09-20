@@ -1,0 +1,101 @@
+{
+  "schema": 1,
+  "image": "wodby/postgres",
+  "versions": [
+    {
+      "version": {
+        "env": "POSTGRES18"
+      },
+      "variants": [
+        {
+          "short": [
+            "{major}"
+          ],
+          "full": "{version}"
+        },
+        {
+          "short": [
+            "{major}-postgis"
+          ],
+          "full": "{version}-postgis"
+        }
+      ]
+    },
+    {
+      "version": {
+        "env": "POSTGRES17"
+      },
+      "variants": [
+        {
+          "short": [
+            "{major}"
+          ],
+          "full": "{version}"
+        },
+        {
+          "short": [
+            "{major}-postgis"
+          ],
+          "full": "{version}-postgis"
+        }
+      ]
+    },
+    {
+      "version": {
+        "env": "POSTGRES16"
+      },
+      "variants": [
+        {
+          "short": [
+            "{major}"
+          ],
+          "full": "{version}"
+        },
+        {
+          "short": [
+            "{major}-postgis"
+          ],
+          "full": "{version}-postgis"
+        }
+      ]
+    },
+    {
+      "version": {
+        "env": "POSTGRES15"
+      },
+      "variants": [
+        {
+          "short": [
+            "{major}"
+          ],
+          "full": "{version}"
+        },
+        {
+          "short": [
+            "{major}-postgis"
+          ],
+          "full": "{version}-postgis"
+        }
+      ]
+    },
+    {
+      "version": {
+        "env": "POSTGRES14"
+      },
+      "variants": [
+        {
+          "short": [
+            "{major}"
+          ],
+          "full": "{version}"
+        },
+        {
+          "short": [
+            "{major}-postgis"
+          ],
+          "full": "{version}-postgis"
+        }
+      ]
+    }
+  ]
+}
