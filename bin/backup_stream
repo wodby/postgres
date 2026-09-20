@@ -35,6 +35,8 @@ for table in "${ADDR[@]}"; do
     ignore+=("--exclude-table-data=${table}")
 done
 
+# Role names differ between databases, so a dump that carries owners or grants cannot be restored
+# anywhere but where it was taken. Access is re-established from the owner role on import.
 PGPASSWORD="${password}" \
     nice -n "${nice}" ionice -c2 -n "${ionice}" \
-    pg_dump "${ignore[@]}" -U"${user}" -h"${host}" "${db}" | gzip >&3
+    pg_dump --no-owner --no-acl "${ignore[@]}" -U"${user}" -h"${host}" "${db}" | gzip >&3

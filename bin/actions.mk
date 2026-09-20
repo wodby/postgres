@@ -48,8 +48,7 @@ create-db:
 	$(eval override lc_collate := $(or $(lc_collate),en_US.utf8))
 	$(eval override lc_ctype := $(or $(lc_ctype),en_US.utf8))
 	$(eval override name := $(shell echo "${name}" | tr -d \'\"))
-	PGPASSWORD=$(POSTGRES_PASSWORD) psql -U$(POSTGRES_USER) -h$(host) -d postgres -c "CREATE DATABASE \"$(name)\" ENCODING '$(encoding)' LC_COLLATE '$(lc_collate)' LC_CTYPE '$(lc_ctype)';" 2>&1 | grep -v "already exists" || true
-	PGPASSWORD=$(POSTGRES_PASSWORD) psql -U$(POSTGRES_USER) -h$(host) -d "$(name)" -c "CREATE SCHEMA IF NOT EXISTS \"$(name)\";"
+	db-layout create "$(name)" "$(host)" "$(encoding)" "$(lc_collate)" "$(lc_ctype)"
 	PGPASSWORD=$(POSTGRES_PASSWORD) create-extensions "$(name)" "$(host)"
 .PHONY: create-db
 
@@ -57,7 +56,15 @@ drop-db:
 	$(call check_defined, name)
 	$(eval override name := $(shell echo "${name}" | tr -d \'\"))
 	PGPASSWORD=$(POSTGRES_PASSWORD) psql -U$(POSTGRES_USER) -h$(host) -d postgres -c "DROP DATABASE IF EXISTS \"$(name)\";"
+	db-layout drop-owner "$(name)" "$(host)"
 .PHONY: drop-db
+
+convert-db:
+	$(call check_defined, name)
+	$(eval override name := $(shell echo "${name}" | tr -d \'\"))
+	$(eval override schema := $(shell echo "${schema}" | tr -d \'\"))
+	db-layout convert "$(name)" "$(host)" "$(schema)"
+.PHONY: convert-db
 
 create-user:
 	$(call check_defined, username, password)
@@ -85,18 +92,14 @@ grant-user-db:
 	$(call check_defined, username, db)
 	$(eval override username := $(shell echo "${username}" | tr -d \'\"))
 	$(eval override db := $(shell echo "${db}" | tr -d \'\"))
-	PGPASSWORD=$(POSTGRES_PASSWORD) psql -U$(POSTGRES_USER) -h$(host) -d postgres -c "GRANT ALL PRIVILEGES ON DATABASE \"$(db)\" TO \"$(username)\";"
-	PGPASSWORD=$(POSTGRES_PASSWORD) psql -U$(POSTGRES_USER) -h$(host) -d "$(db)" -c "GRANT ALL PRIVILEGES ON SCHEMA \"$(db)\" TO \"$(username)\";"
-	PGPASSWORD=$(POSTGRES_PASSWORD) psql -U$(POSTGRES_USER) -h$(host) -d postgres -c "ALTER ROLE \"$(username)\" IN DATABASE \"$(db)\" SET search_path TO \"$(db)\", public;"
+	db-layout grant "$(db)" "$(username)" "$(host)"
 .PHONY: grant-user-db
 
 revoke-user-db:
 	$(call check_defined, username, db)
 	$(eval override username := $(shell echo "${username}" | tr -d \'\"))
 	$(eval override db := $(shell echo "${db}" | tr -d \'\"))
-	PGPASSWORD=$(POSTGRES_PASSWORD) psql -U$(POSTGRES_USER) -h$(host) -d postgres -c "ALTER ROLE \"$(username)\" IN DATABASE \"$(db)\" RESET search_path;"
-	PGPASSWORD=$(POSTGRES_PASSWORD) psql -U$(POSTGRES_USER) -h$(host) -d "$(db)" -c "REVOKE ALL PRIVILEGES ON SCHEMA \"$(db)\" FROM \"$(username)\";"
-	PGPASSWORD=$(POSTGRES_PASSWORD) psql -U$(POSTGRES_USER) -h$(host) -d postgres -c "REVOKE ALL PRIVILEGES ON DATABASE \"$(db)\" FROM \"$(username)\";"
+	db-layout revoke "$(db)" "$(username)" "$(host)"
 .PHONY: revoke-user-db
 
 check-ready:

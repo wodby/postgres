@@ -94,6 +94,7 @@ Bundled PostGIS versions for the `*-postgis` tags:
 | `POSTGRES_DB_EXTENSIONS`                |                      | Separated by comma |
 | `POSTGRES_INITDB_PASSWORD`              |                      | Password for the optional role created before initialization imports |
 | `POSTGRES_INITDB_USER`                  |                      | Optional role created before initialization imports |
+| `POSTGRES_LAYOUT_LOCK_TIMEOUT`          | `10s`                | How long `convert-db` waits for a lock |
 | `POSTGRES_LC_MESSAGES`                  | `en_US.utf8`         |                    |
 | `POSTGRES_LC_MONETARY`                  | `en_US.utf8`         |                    |
 | `POSTGRES_LC_NUMERIC`                   | `en_US.utf8`         |                    |
@@ -112,9 +113,31 @@ Bundled PostGIS versions for the `*-postgis` tags:
 | `POSTGRES_WAL_BUFFERS`                  | `16MB`               |                    |
 | `POSTGRES_WORK_MEM`                     | `5MB`                |                    |
 
-Files mounted at `/wodby/import` are processed after the image's built-in initialization scripts. Set
-`POSTGRES_INITDB_USER` and `POSTGRES_INITDB_PASSWORD` together when imported SQL contains objects owned by a role that
-must exist before the import starts. These variables do not replace the `POSTGRES_USER` cluster administrator.
+`POSTGRES_INITDB_USER` and `POSTGRES_INITDB_PASSWORD` must be set together. They do not replace the `POSTGRES_USER`
+cluster administrator.
+
+## Database Access
+
+`create-db` gives every database its own owner role, named `<db>:owner`, which cannot log in. `grant-user-db` makes a
+user a member of that role and has the user's sessions in that database act as it. As a result:
+
+- Tables and other objects are created in the `public` schema, including by clients that select `public` themselves.
+- Every object belongs to the owner role, whichever user created it, so all users granted access to a database share
+  its data. In such a session `current_user` is the owner role and `session_user` is the user that logged in.
+- `revoke-user-db` removes all access. A revoked user owns nothing and can be dropped right away.
+- Only users granted access can connect to a database created by `create-db`.
+
+Backups contain no role names and no grants, so a backup can be imported into a database with a different name and
+different users. Access to imported data comes from the owner role of the database it is imported into.
+
+### Imports
+
+Files mounted at `/wodby/import` are loaded into `POSTGRES_DB` when the data directory is initialized. With
+`POSTGRES_INITDB_USER` set, that user is granted access to the database and the imported objects are handed to its
+owner role.
+
+A dump may name roles this server does not have, as a plain `pg_dump` does for the owner of every object. Such roles
+exist only while the dump is loaded. A dump that creates roles itself is loaded as it is.
 
 ## Orchestration Actions
 
@@ -128,17 +151,17 @@ commands:
     query query=<SELECT 1> [user password db host] 
     query-silent query=<SELECT 1> [user password db host]
     create-db name enconding lc_collate lc_ctype
-      also creates a schema with the same name inside the database
+      also creates the owner role of the database
     drop-db name
-      drops the database; the same-name schema is removed with it
+      also drops the owner role of the database
+    convert-db name [schema]
+      moves a database created by releases 1.40 to 1.47 to the public schema
     create-user username password
     drop-user username
     grant-user-db username db
-      also grants access to the same-name schema inside that database
-      and sets the user's search_path for that database to "<db>", public
+      gives the user full access to the database and the objects of its other users
     revoke-user-db username db
-      also revokes access to the same-name schema inside that database
-      and resets the user's search_path for that database
+      removes all access of the user to the database
     check-ready [user password db host max_try wait_seconds delay_seconds]  
     
 default params values:
@@ -157,6 +180,9 @@ default params values:
 
 `create-user` is safe to retry when the existing role accepts the requested password, but fails on a same-named role
 with different credentials rather than replacing it.
+
+`create-db`, `grant-user-db`, `revoke-user-db` and `convert-db` are safe to retry. See [database access](#database-access) for what
+they set up. `import` keeps the owner role and the users of the database it replaces.
 
 ## Deployment
 

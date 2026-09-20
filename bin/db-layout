@@ -1,0 +1,533 @@
+#!/usr/bin/env bash
+
+# Manages the access layout of a managed database.
+#
+# A managed database is owned by a dedicated NOLOGIN role. Granting a user access makes it a member
+# of that role and defaults its sessions in that database to the role, so every object is owned by
+# the shared role no matter which user created it. Objects live in "public": a dump then carries no
+# database or user name and can be restored into a database with any other name.
+#
+# Earlier releases created a schema named after the database instead. `convert` moves such a
+# database to this layout when asked to; nothing does so on its own. Every step is idempotent and
+# leaves the database usable, so a run interrupted by a lock timeout can simply be repeated.
+
+set -eEuo pipefail
+
+if [[ -n "${DEBUG:-}" ]]; then
+    set -x
+fi
+
+usage() {
+    cat >&2 <<'EOF'
+usage: db-layout <command> <database> [args...]
+
+  owner-role <database>                 print the name of the role that owns the database
+  manageable <database>                 succeed unless the database is a system database
+  create     <database> [host] [encoding] [lc_collate] [lc_ctype]
+                                        create the database (if missing) with its owner role
+  adopt      <database> [host]          hand the objects of a database to its owner role
+  convert    <database> [host] [schema] move the objects of a schema of earlier releases to public
+  managed    <database> [host]          succeed if the database is owned by its owner role
+  recreate   <database> [host]          drop and recreate a managed database, keeping its access rules
+  lock-down  <database> [host]          allow only members of the owner role to connect
+  grant      <database> <user> [host]   give a user full access to the database
+  revoke     <database> <user> [host]   remove a user's access to the database
+  drop-owner <database> [host]          remove the owner role of a dropped database
+EOF
+    exit 64
+}
+
+# Identifiers longer than 63 bytes are silently truncated by PostgreSQL, which would let two long
+# database names share one owner role. Shorten such names with a hash of the full name instead.
+# The ":" cannot appear in a user or database name created through the platform, so an owner role
+# can never collide with one.
+owner_role() {
+    local db="$1" suffix=':owner' max=63 hash keep
+    if (( ${#db} + ${#suffix} <= max )); then
+        printf '%s%s' "${db}" "${suffix}"
+        return
+    fi
+    hash="$(printf '%s' "${db}" | md5sum | cut -c1-8)"
+    keep=$(( max - ${#suffix} - ${#hash} - 1 ))
+    printf '%s:%s%s' "${db:0:keep}" "${hash}" "${suffix}"
+}
+
+# The maintenance and template databases are shared by every role and are never managed.
+is_system_db() {
+    [[ "$1" == 'postgres' || "$1" == 'template0' || "$1" == 'template1' ]]
+}
+
+# Runs psql as the administrator. An empty host means the local socket, which is the only way to
+# reach the temporary server that runs the initialization scripts.
+run_psql() {
+    local database="$1"
+    shift
+    local args=(-X -q -v ON_ERROR_STOP=1 -U "${POSTGRES_USER}" -d "${database}"
+        -v db="${db}" -v owner="${owner}" -v member="${member:-}" -v legacy="${legacy:-}")
+    if [[ -n "${host}" ]]; then
+        args+=(-h "${host}")
+    fi
+    PGPASSWORD="${POSTGRES_PASSWORD:-}" psql "${args[@]}" "$@"
+}
+
+# Reads a query on stdin whose rows are SQL statements, then runs those statements one by one.
+# Each statement commits on its own, so a large database never exhausts the shared lock table and
+# an interrupted run keeps the progress it made.
+apply() {
+    local database="$1" description="$2" plan
+    plan="$(mktemp)"
+    run_psql "${database}" -tA -f - > "${plan}"
+    if [[ -s "${plan}" ]]; then
+        echo "${description} ($(grep -c ';$' "${plan}") statements)"
+        {
+            echo "SET lock_timeout = '${lock_timeout}';"
+            cat "${plan}"
+        } | run_psql "${database}" -f -
+    fi
+    rm -f "${plan}"
+}
+
+# Prints the single value a query returns. The query is read from stdin so psql interpolates variables.
+value() {
+    run_psql "$1" -tA -f -
+}
+
+db_exists() {
+    [[ "$(value postgres <<< "SELECT count(*) FROM pg_catalog.pg_database WHERE datname = :'db';")" == '1' ]]
+}
+
+legacy_schema_exists() {
+    [[ "${legacy}" != 'public' && "$(value "${db}" <<< "SELECT count(*) FROM pg_catalog.pg_namespace WHERE nspname = :'legacy';")" == '1' ]]
+}
+
+ensure_owner() {
+    apply postgres "Creating owner role ${owner}" <<'SQL'
+SELECT format('CREATE ROLE %I NOLOGIN;', :'owner')
+WHERE NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = :'owner');
+SQL
+
+    # Members act as this role, so it must never be a login or a privileged role.
+    if [[ "$(value postgres <<< "SELECT rolcanlogin FROM pg_catalog.pg_roles WHERE rolname = :'owner';")" == 't' ]]; then
+        echo "Role ${owner} can log in; refusing to use it as the owner role of database ${db}" >&2
+        exit 1
+    fi
+    apply postgres "Removing privileged attributes from ${owner}" <<'SQL'
+SELECT format('ALTER ROLE %I NOSUPERUSER NOCREATEDB NOCREATEROLE NOREPLICATION NOBYPASSRLS;', rolname)
+FROM pg_catalog.pg_roles
+WHERE rolname = :'owner' AND (rolsuper OR rolcreatedb OR rolcreaterole OR rolreplication OR rolbypassrls);
+SQL
+
+    # Owning the database is what lets members create objects in "public" on PostgreSQL 15 and later.
+    apply postgres "Making ${owner} the owner of database ${db}" <<'SQL'
+SELECT format('ALTER DATABASE %I OWNER TO %I;', d.datname, :'owner')
+FROM pg_catalog.pg_database d
+WHERE d.datname = :'db'
+  AND d.datdba <> (SELECT oid FROM pg_catalog.pg_roles WHERE rolname = :'owner');
+SQL
+}
+
+# Moves the objects of a schema of earlier releases to "public". That schema was named after the
+# database the objects were created in, which for an imported dump is the source database. Until
+# it is dropped it stays on the users' search_path next to "public", so unqualified names keep
+# resolving after every single statement below.
+move_legacy_objects() {
+    echo "Moving the objects of schema ${legacy} in database ${db} to public"
+
+    # The schema ACL is the record of which users were granted access.
+    apply "${db}" "Converting schema grants into ${owner} membership" <<'SQL'
+SET search_path = pg_catalog;
+SELECT format('GRANT %I TO %I;', :'owner', r.rolname)
+FROM pg_namespace n
+CROSS JOIN LATERAL aclexplode(n.nspacl) a
+JOIN pg_roles r ON r.oid = a.grantee
+WHERE n.nspname = :'legacy' AND r.rolcanlogin AND NOT r.rolsuper
+GROUP BY r.rolname
+ORDER BY r.rolname;
+SQL
+
+    # Members of an extension move with it.
+    apply "${db}" "Moving extensions to public" <<'SQL'
+SET search_path = pg_catalog;
+SELECT format('ALTER EXTENSION %I SET SCHEMA public;', e.extname)
+FROM pg_extension e
+JOIN pg_namespace n ON n.oid = e.extnamespace
+WHERE n.nspname = :'legacy'
+ORDER BY e.extname;
+SQL
+
+    # Indexes, constraints, row types and the sequences owned by a column move with their table.
+    apply "${db}" "Moving tables, views and sequences to public" <<'SQL'
+SET search_path = pg_catalog;
+SELECT format('ALTER %s %I.%I SET SCHEMA public;',
+    CASE c.relkind WHEN 'r' THEN 'TABLE' WHEN 'p' THEN 'TABLE' WHEN 'f' THEN 'FOREIGN TABLE'
+        WHEN 'v' THEN 'VIEW' WHEN 'm' THEN 'MATERIALIZED VIEW' WHEN 'S' THEN 'SEQUENCE' END,
+    n.nspname, c.relname)
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = :'legacy'
+  AND c.relkind IN ('r', 'p', 'f', 'v', 'm', 'S')
+  AND NOT EXISTS (
+      SELECT 1 FROM pg_depend d
+      WHERE d.classid = 'pg_class'::regclass AND d.objid = c.oid AND d.objsubid = 0
+        AND (d.deptype = 'e' OR (c.relkind = 'S' AND d.deptype IN ('a', 'i'))))
+ORDER BY c.relkind NOT IN ('r', 'p', 'f'), c.oid;
+SQL
+
+    # This includes the constructor functions of range types, which stay behind when the type moves.
+    apply "${db}" "Moving functions and procedures to public" <<'SQL'
+SET search_path = pg_catalog;
+SELECT format('ALTER ROUTINE %s SET SCHEMA public;', p.oid::regprocedure)
+FROM pg_proc p
+JOIN pg_namespace n ON n.oid = p.pronamespace
+WHERE n.nspname = :'legacy'
+  AND NOT EXISTS (
+      SELECT 1 FROM pg_depend d
+      WHERE d.classid = 'pg_proc'::regclass AND d.objid = p.oid AND d.deptype = 'e')
+ORDER BY p.oid;
+SQL
+
+    # Array types follow their element type. A multirange type does not follow its range type.
+    apply "${db}" "Moving types to public" <<'SQL'
+SET search_path = pg_catalog;
+SELECT format('ALTER %s %s SET SCHEMA public;', CASE t.typtype WHEN 'd' THEN 'DOMAIN' ELSE 'TYPE' END, t.oid::regtype)
+FROM pg_type t
+JOIN pg_namespace n ON n.oid = t.typnamespace
+LEFT JOIN pg_class c ON c.oid = t.typrelid
+WHERE n.nspname = :'legacy'
+  AND (t.typtype IN ('e', 'd', 'r', 'm') OR (t.typtype = 'c' AND c.relkind = 'c'))
+  AND NOT EXISTS (
+      SELECT 1 FROM pg_depend d
+      WHERE d.classid = 'pg_type'::regclass AND d.objid = t.oid AND d.deptype = 'e')
+ORDER BY t.oid;
+SQL
+
+    apply "${db}" "Moving collations, statistics and text search objects to public" <<'SQL'
+SET search_path = pg_catalog;
+SELECT format('ALTER COLLATION %I.%I SET SCHEMA public;', n.nspname, o.collname)
+FROM pg_collation o JOIN pg_namespace n ON n.oid = o.collnamespace
+WHERE n.nspname = :'legacy'
+  AND NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.classid = 'pg_collation'::regclass AND d.objid = o.oid AND d.deptype = 'e')
+UNION ALL
+SELECT format('ALTER STATISTICS %I.%I SET SCHEMA public;', n.nspname, o.stxname)
+FROM pg_statistic_ext o JOIN pg_namespace n ON n.oid = o.stxnamespace
+WHERE n.nspname = :'legacy'
+UNION ALL
+SELECT format('ALTER TEXT SEARCH DICTIONARY %I.%I SET SCHEMA public;', n.nspname, o.dictname)
+FROM pg_ts_dict o JOIN pg_namespace n ON n.oid = o.dictnamespace
+WHERE n.nspname = :'legacy'
+  AND NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.classid = 'pg_ts_dict'::regclass AND d.objid = o.oid AND d.deptype = 'e')
+UNION ALL
+SELECT format('ALTER TEXT SEARCH CONFIGURATION %I.%I SET SCHEMA public;', n.nspname, o.cfgname)
+FROM pg_ts_config o JOIN pg_namespace n ON n.oid = o.cfgnamespace
+WHERE n.nspname = :'legacy'
+  AND NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.classid = 'pg_ts_config'::regclass AND d.objid = o.oid AND d.deptype = 'e');
+SQL
+
+}
+
+drop_legacy_schema() {
+    # Without CASCADE this fails, and names what is left, if any kind of object was not moved above.
+    # The database then keeps working from both schemas until that object is dealt with.
+    echo "Dropping the now empty schema ${legacy}"
+    run_psql "${db}" <<'SQL'
+DROP SCHEMA :"legacy";
+SQL
+
+    # Only the exact value set by earlier releases is removed; a customized search_path is kept.
+    apply postgres "Resetting search_path of the users of database ${db}" <<'SQL'
+SET search_path = pg_catalog;
+SELECT format('ALTER ROLE %I IN DATABASE %I RESET search_path;', r.rolname, d.datname)
+FROM pg_db_role_setting s
+JOIN pg_database d ON d.oid = s.setdatabase
+JOIN pg_roles r ON r.oid = s.setrole
+WHERE d.datname = :'db'
+  AND format('search_path=%s, public', quote_ident(:'legacy')) = ANY (s.setconfig)
+ORDER BY r.rolname;
+SQL
+}
+
+# The per-database "role" default is what makes a member create objects as the owner role. It is
+# stored with the database, so it has to be restored after the database was dropped and recreated.
+ensure_member_defaults() {
+    apply postgres "Defaulting members of ${owner} to it in database ${db}" <<'SQL'
+SET search_path = pg_catalog;
+SELECT format('ALTER ROLE %I IN DATABASE %I SET role TO %L;', m.rolname, :'db', :'owner')
+FROM pg_auth_members am
+JOIN pg_roles o ON o.oid = am.roleid
+JOIN pg_roles m ON m.oid = am.member
+WHERE o.rolname = :'owner' AND m.rolcanlogin
+  AND NOT EXISTS (
+      SELECT 1 FROM pg_db_role_setting s
+      JOIN pg_database d ON d.oid = s.setdatabase
+      WHERE s.setrole = m.oid AND d.datname = :'db' AND format('role=%s', :'owner') = ANY (s.setconfig))
+ORDER BY m.rolname;
+SQL
+}
+
+# Hands objects to the owner role when they belong to one of its members or to an administrator:
+# objects created under the earlier layout, loaded by an import, or created with the administrator
+# account. Objects of unrelated roles and members of extensions are left alone.
+adopt_objects() {
+    apply "${db}" "Transferring objects in database ${db} to ${owner}" <<'SQL'
+SET search_path = pg_catalog;
+WITH target AS (SELECT oid FROM pg_roles WHERE rolname = :'owner'),
+user_schemas AS (
+    SELECT n.oid, n.nspname, n.nspowner FROM pg_namespace n
+    WHERE n.nspname !~ '^pg_' AND n.nspname <> 'information_schema'
+      AND NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.classid = 'pg_namespace'::regclass AND d.objid = n.oid AND d.deptype = 'e'))
+SELECT statement FROM (
+    SELECT 1 AS step, n.oid, format('ALTER SCHEMA %I OWNER TO %I;', n.nspname, :'owner') AS statement
+    FROM user_schemas n, target
+    WHERE n.nspname <> 'public' AND n.nspowner <> target.oid AND pg_has_role(n.nspowner, target.oid, 'MEMBER')
+    UNION ALL
+    SELECT 2, c.oid, format('ALTER %s %I.%I OWNER TO %I;',
+        CASE c.relkind WHEN 'r' THEN 'TABLE' WHEN 'p' THEN 'TABLE' WHEN 'f' THEN 'FOREIGN TABLE'
+            WHEN 'v' THEN 'VIEW' WHEN 'm' THEN 'MATERIALIZED VIEW' WHEN 'S' THEN 'SEQUENCE' END,
+        n.nspname, c.relname, :'owner')
+    FROM pg_class c JOIN user_schemas n ON n.oid = c.relnamespace, target
+    WHERE c.relkind IN ('r', 'p', 'f', 'v', 'm', 'S')
+      AND c.relowner <> target.oid AND pg_has_role(c.relowner, target.oid, 'MEMBER')
+      AND NOT EXISTS (
+          SELECT 1 FROM pg_depend d
+          WHERE d.classid = 'pg_class'::regclass AND d.objid = c.oid AND d.objsubid = 0
+            AND (d.deptype = 'e' OR (c.relkind = 'S' AND d.deptype IN ('a', 'i'))))
+    UNION ALL
+    SELECT 3, p.oid, format('ALTER ROUTINE %s OWNER TO %I;', p.oid::regprocedure, :'owner')
+    FROM pg_proc p JOIN user_schemas n ON n.oid = p.pronamespace, target
+    WHERE p.proowner <> target.oid AND pg_has_role(p.proowner, target.oid, 'MEMBER')
+      AND NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.classid = 'pg_proc'::regclass AND d.objid = p.oid AND d.deptype = 'e')
+    UNION ALL
+    SELECT 4, t.oid, format('ALTER %s %s OWNER TO %I;', CASE t.typtype WHEN 'd' THEN 'DOMAIN' ELSE 'TYPE' END, t.oid::regtype, :'owner')
+    FROM pg_type t JOIN user_schemas n ON n.oid = t.typnamespace LEFT JOIN pg_class c ON c.oid = t.typrelid, target
+    WHERE (t.typtype IN ('e', 'd', 'r') OR (t.typtype = 'c' AND c.relkind = 'c'))
+      AND t.typowner <> target.oid AND pg_has_role(t.typowner, target.oid, 'MEMBER')
+      AND NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.classid = 'pg_type'::regclass AND d.objid = t.oid AND d.deptype = 'e')
+    UNION ALL
+    SELECT 5, o.oid, format('ALTER COLLATION %I.%I OWNER TO %I;', n.nspname, o.collname, :'owner')
+    FROM pg_collation o JOIN user_schemas n ON n.oid = o.collnamespace, target
+    WHERE o.collowner <> target.oid AND pg_has_role(o.collowner, target.oid, 'MEMBER')
+      AND NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.classid = 'pg_collation'::regclass AND d.objid = o.oid AND d.deptype = 'e')
+    UNION ALL
+    SELECT 6, o.oid, format('ALTER STATISTICS %I.%I OWNER TO %I;', n.nspname, o.stxname, :'owner')
+    FROM pg_statistic_ext o JOIN user_schemas n ON n.oid = o.stxnamespace, target
+    WHERE o.stxowner <> target.oid AND pg_has_role(o.stxowner, target.oid, 'MEMBER')
+    UNION ALL
+    SELECT 7, o.oid, format('ALTER TEXT SEARCH DICTIONARY %I.%I OWNER TO %I;', n.nspname, o.dictname, :'owner')
+    FROM pg_ts_dict o JOIN user_schemas n ON n.oid = o.dictnamespace, target
+    WHERE o.dictowner <> target.oid AND pg_has_role(o.dictowner, target.oid, 'MEMBER')
+      AND NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.classid = 'pg_ts_dict'::regclass AND d.objid = o.oid AND d.deptype = 'e')
+    UNION ALL
+    SELECT 8, o.oid, format('ALTER TEXT SEARCH CONFIGURATION %I.%I OWNER TO %I;', n.nspname, o.cfgname, :'owner')
+    FROM pg_ts_config o JOIN user_schemas n ON n.oid = o.cfgnamespace, target
+    WHERE o.cfgowner <> target.oid AND pg_has_role(o.cfgowner, target.oid, 'MEMBER')
+      AND NOT EXISTS (SELECT 1 FROM pg_depend d WHERE d.classid = 'pg_ts_config'::regclass AND d.objid = o.oid AND d.deptype = 'e')
+    UNION ALL
+    SELECT 9, l.oid, format('ALTER LARGE OBJECT %s OWNER TO %I;', l.oid, :'owner')
+    FROM pg_largeobject_metadata l, target
+    WHERE l.lomowner <> target.oid AND pg_has_role(l.lomowner, target.oid, 'MEMBER')
+) statements
+ORDER BY step, oid;
+SQL
+}
+
+# An owner role is only ever created for a database that exists, so none is left behind by a typo.
+require_db() {
+    if ! db_exists; then
+        echo "Database ${db} does not exist" >&2
+        exit 1
+    fi
+}
+
+adopt() {
+    require_db
+    ensure_owner
+    adopt_objects
+    ensure_member_defaults
+}
+
+# The order keeps the database usable if the conversion stops half way. Users become members
+# first, which only adds privileges. Their sessions start acting as the owner role last, once that
+# role owns every object: a session acting as the owner role gives up the privileges of the user
+# that logged in, so it could not read a table that user still owns.
+convert() {
+    require_db
+    if ! legacy_schema_exists; then
+        echo "Database ${db} has no schema ${legacy}; nothing to convert"
+        return
+    fi
+    ensure_owner
+    move_legacy_objects
+    adopt_objects
+    ensure_member_defaults
+    drop_legacy_schema
+}
+
+create() {
+    local encoding="${1:-UTF8}" lc_collate="${2:-en_US.utf8}" lc_ctype="${3:-en_US.utf8}"
+    ensure_owner
+    if db_exists; then
+        echo "Database ${db} already exists"
+    else
+        echo "Creating database ${db}"
+        run_psql postgres -v encoding="${encoding}" -v lc_collate="${lc_collate}" -v lc_ctype="${lc_ctype}" <<'SQL'
+SELECT format('CREATE DATABASE %I OWNER %I ENCODING %L LC_COLLATE %L LC_CTYPE %L', :'db', :'owner', :'encoding', :'lc_collate', :'lc_ctype')
+\gexec
+SQL
+        lock_down
+    fi
+    adopt
+}
+
+# Access then comes only from membership in the owner role, which makes `revoke` a complete cut-off.
+# Applied to new databases only: roles created by hand may rely on the default in an existing one.
+lock_down() {
+    run_psql postgres <<'SQL'
+REVOKE CONNECT, TEMPORARY ON DATABASE :"db" FROM PUBLIC;
+SQL
+}
+
+grant() {
+    require_db
+    ensure_owner
+    echo "Granting ${member} access to database ${db}"
+    run_psql postgres <<'SQL'
+GRANT :"owner" TO :"member";
+SQL
+    adopt_objects
+    ensure_member_defaults
+}
+
+revoke() {
+    echo "Revoking access of ${member} to database ${db}"
+    run_psql postgres <<'SQL'
+ALTER ROLE :"member" IN DATABASE :"db" RESET role;
+SELECT format('REVOKE %I FROM %I', :'owner', :'member')
+WHERE EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = :'owner')
+\gexec
+REVOKE ALL PRIVILEGES ON DATABASE :"db" FROM :"member";
+SQL
+}
+
+is_managed() {
+    [[ "$(value postgres <<'SQL'
+SELECT count(*) FROM pg_catalog.pg_database d
+JOIN pg_catalog.pg_roles r ON r.oid = d.datdba
+WHERE d.datname = :'db' AND r.rolname = :'owner' AND NOT r.rolcanlogin;
+SQL
+    )" == '1' ]]
+}
+
+# An import replaces the whole database. Whether everyone may connect is stored with the database,
+# so it is read before the drop and restored afterwards; `adopt` restores the rest once data is loaded.
+recreate() {
+    local locked
+    locked="$(value postgres <<'SQL'
+SELECT NOT EXISTS (
+    SELECT 1 FROM pg_catalog.pg_database d
+    CROSS JOIN LATERAL aclexplode(coalesce(d.datacl, acldefault('d', d.datdba))) a
+    WHERE d.datname = :'db' AND a.grantee = 0 AND a.privilege_type = 'CONNECT');
+SQL
+    )"
+    echo "Recreating database ${db}"
+    run_psql postgres <<'SQL'
+DROP DATABASE :"db";
+CREATE DATABASE :"db" OWNER :"owner";
+SQL
+    if [[ "${locked}" == 't' ]]; then
+        lock_down
+    fi
+}
+
+# The database is already gone at this point, so a role that cannot be dropped must not fail the
+# action: repeating it could never succeed.
+drop_owner() {
+    if ! run_psql postgres <<'SQL'
+SELECT format('DROP ROLE %I', rolname) FROM pg_catalog.pg_roles WHERE rolname = :'owner' AND NOT rolcanlogin
+\gexec
+SQL
+    then
+        echo "Could not drop role ${owner}; it has to be removed manually" >&2
+    fi
+}
+
+command="${1:-}"
+db="${2:-}"
+if [[ -z "${command}" || -z "${db}" ]]; then
+    usage
+fi
+shift 2
+
+owner="$(owner_role "${db}")"
+lock_timeout="${POSTGRES_LAYOUT_LOCK_TIMEOUT:-10s}"
+member=''
+host=''
+legacy=''
+
+if [[ "${command}" == 'owner-role' ]]; then
+    printf '%s\n' "${owner}"
+    exit 0
+fi
+
+if [[ "${command}" == 'manageable' ]]; then
+    ! is_system_db "${db}"
+    exit
+fi
+
+if is_system_db "${db}"; then
+    echo "Database ${db} is a system database and is not managed" >&2
+    exit 1
+fi
+
+# Every step of a conversion leaves the database usable, which is worth saying when one fails.
+explain_failure() {
+    trap 'echo "The layout of database ${db} was not fully updated; the database stays usable and the action can be repeated" >&2' ERR
+}
+
+case "${command}" in
+    create)
+        host="${1:-}"
+        explain_failure
+        create "${2:-}" "${3:-}" "${4:-}"
+        ;;
+    adopt)
+        host="${1:-}"
+        explain_failure
+        adopt
+        ;;
+    convert)
+        host="${1:-}"
+        legacy="${2:-${db}}"
+        explain_failure
+        convert
+        ;;
+    managed)
+        host="${1:-}"
+        is_managed
+        ;;
+    recreate)
+        host="${1:-}"
+        recreate
+        ;;
+    lock-down)
+        host="${1:-}"
+        lock_down
+        ;;
+    grant | revoke)
+        member="${1:-}"
+        host="${2:-}"
+        if [[ -z "${member}" ]]; then
+            usage
+        fi
+        if [[ "${command}" == 'grant' ]]; then
+            explain_failure
+        fi
+        "${command}"
+        ;;
+    drop-owner)
+        host="${1:-}"
+        drop_owner
+        ;;
+    *)
+        usage
+        ;;
+esac
