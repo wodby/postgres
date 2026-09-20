@@ -59,9 +59,12 @@ drop-db:
 	db-layout drop-owner "$(name)" "$(host)"
 .PHONY: drop-db
 
-adopt-dbs:
-	db-layout adopt-all "$(host)"
-.PHONY: adopt-dbs
+convert-db:
+	$(call check_defined, name)
+	$(eval override name := $(shell echo "${name}" | tr -d \'\"))
+	$(eval override schema := $(shell echo "${schema}" | tr -d \'\"))
+	db-layout convert "$(name)" "$(host)" "$(schema)"
+.PHONY: convert-db
 
 create-user:
 	$(call check_defined, username, password)

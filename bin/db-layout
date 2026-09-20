@@ -7,9 +7,9 @@
 # the shared role no matter which user created it. Objects live in "public": a dump then carries no
 # database or user name and can be restored into a database with any other name.
 #
-# Earlier releases created a schema named after the database instead. `adopt` converts such a
-# database in place. Every step is idempotent and leaves the database usable, so a run interrupted
-# by a lock timeout can simply be repeated.
+# Earlier releases created a schema named after the database instead. `convert` moves such a
+# database to this layout when asked to; nothing does so on its own. Every step is idempotent and
+# leaves the database usable, so a run interrupted by a lock timeout can simply be repeated.
 
 set -eEuo pipefail
 
@@ -25,8 +25,8 @@ usage: db-layout <command> <database> [args...]
   manageable <database>                 succeed unless the database is a system database
   create     <database> [host] [encoding] [lc_collate] [lc_ctype]
                                         create the database (if missing) with its owner role
-  adopt      <database> [host]          bring an existing database to the current layout
-  adopt-all  [host]                     adopt every managed database of the server
+  adopt      <database> [host]          hand the objects of a database to its owner role
+  convert    <database> [host] [schema] move the objects of a schema of earlier releases to public
   managed    <database> [host]          succeed if the database is owned by its owner role
   recreate   <database> [host]          drop and recreate a managed database, keeping its access rules
   lock-down  <database> [host]          allow only members of the owner role to connect
@@ -100,24 +100,6 @@ legacy_schema_exists() {
     [[ "${legacy}" != 'public' && "$(value "${db}" <<< "SELECT count(*) FROM pg_catalog.pg_namespace WHERE nspname = :'legacy';")" == '1' ]]
 }
 
-# Earlier releases named the schema after the database it was created in. A dump of such a database
-# restored under another name still carries the schema of its source, which only the caller knows.
-legacy_schemas() {
-    {
-        printf '%s\n' "${db}"
-        tr ',' '\n' <<< "${POSTGRES_LAYOUT_LEGACY_SCHEMAS:-}"
-    } | awk 'NF && !seen[$0]++'
-}
-
-for_each_legacy_schema() {
-    local step="$1" schemas
-    mapfile -t schemas < <(legacy_schemas)
-    for legacy in "${schemas[@]}"; do
-        "${step}"
-    done
-    legacy=''
-}
-
 ensure_owner() {
     apply postgres "Creating owner role ${owner}" <<'SQL'
 SELECT format('CREATE ROLE %I NOLOGIN;', :'owner')
@@ -144,20 +126,12 @@ WHERE d.datname = :'db'
 SQL
 }
 
-# Converts the layout of earlier releases: a schema named after the database that the granted users
-# created their objects in, with a per-database search_path pointing at it. Until the schema is
-# dropped it stays on the users' search_path next to "public", so unqualified names keep resolving
-# after every single statement below.
-#
-# The order of the whole conversion keeps the database usable if it stops half way. Users become
-# members first, which only adds privileges. Their sessions start acting as the owner role last,
-# once that role owns every object: a session acting as the owner role gives up the privileges of
-# the user that logged in, so it could not read a table that user still owns.
-convert_legacy_schema() {
-    if ! legacy_schema_exists; then
-        return
-    fi
-    echo "Database ${db} keeps its objects in schema ${legacy}, the layout of earlier releases; moving them to public"
+# Moves the objects of a schema of earlier releases to "public". That schema was named after the
+# database the objects were created in, which for an imported dump is the source database. Until
+# it is dropped it stays on the users' search_path next to "public", so unqualified names keep
+# resolving after every single statement below.
+move_legacy_objects() {
+    echo "Moving the objects of schema ${legacy} in database ${db} to public"
 
     # The schema ACL is the record of which users were granted access.
     apply "${db}" "Converting schema grants into ${owner} membership" <<'SQL'
@@ -251,11 +225,7 @@ SQL
 
 }
 
-finish_legacy_schema() {
-    if ! legacy_schema_exists; then
-        return
-    fi
-
+drop_legacy_schema() {
     # Without CASCADE this fails, and names what is left, if any kind of object was not moved above.
     # The database then keeps working from both schemas until that object is dealt with.
     echo "Dropping the now empty schema ${legacy}"
@@ -371,10 +341,25 @@ require_db() {
 adopt() {
     require_db
     ensure_owner
-    for_each_legacy_schema convert_legacy_schema
     adopt_objects
     ensure_member_defaults
-    for_each_legacy_schema finish_legacy_schema
+}
+
+# The order keeps the database usable if the conversion stops half way. Users become members
+# first, which only adds privileges. Their sessions start acting as the owner role last, once that
+# role owns every object: a session acting as the owner role gives up the privileges of the user
+# that logged in, so it could not read a table that user still owns.
+convert() {
+    require_db
+    if ! legacy_schema_exists; then
+        echo "Database ${db} has no schema ${legacy}; nothing to convert"
+        return
+    fi
+    ensure_owner
+    move_legacy_objects
+    adopt_objects
+    ensure_member_defaults
+    drop_legacy_schema
 }
 
 create() {
@@ -404,14 +389,12 @@ SQL
 grant() {
     require_db
     ensure_owner
-    for_each_legacy_schema convert_legacy_schema
     echo "Granting ${member} access to database ${db}"
     run_psql postgres <<'SQL'
 GRANT :"owner" TO :"member";
 SQL
     adopt_objects
     ensure_member_defaults
-    for_each_legacy_schema finish_legacy_schema
 }
 
 revoke() {
@@ -423,23 +406,6 @@ WHERE EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = :'owner')
 \gexec
 REVOKE ALL PRIVILEGES ON DATABASE :"db" FROM :"member";
 SQL
-
-    # A database of an earlier release that was never converted still carries its direct grants.
-    legacy="${db}"
-    if legacy_schema_exists; then
-        run_psql "${db}" <<'SQL'
-REVOKE ALL PRIVILEGES ON SCHEMA :"legacy" FROM :"member";
-SQL
-        apply postgres "Resetting search_path of ${member}" <<'SQL'
-SET search_path = pg_catalog;
-SELECT format('ALTER ROLE %I IN DATABASE %I RESET search_path;', r.rolname, d.datname)
-FROM pg_db_role_setting s
-JOIN pg_database d ON d.oid = s.setdatabase
-JOIN pg_roles r ON r.oid = s.setrole
-WHERE d.datname = :'db' AND r.rolname = :'member'
-  AND format('search_path=%s, public', quote_ident(:'db')) = ANY (s.setconfig);
-SQL
-    fi
 }
 
 is_managed() {
@@ -472,39 +438,6 @@ SQL
     fi
 }
 
-# Converts whatever an upgrade of the server finds. Only databases this image set up are touched:
-# those owned by their owner role, and those of earlier releases, which carry a schema named after
-# themselves. A busy table can make a conversion time out, so it gets a few attempts; a database
-# that still fails keeps working as before and does not stop the others.
-adopt_all() {
-    local name attempt failed=0 names
-    mapfile -t names < <(value postgres <<'SQL'
-SELECT datname FROM pg_catalog.pg_database
-WHERE datallowconn AND NOT datistemplate AND datname <> 'postgres'
-ORDER BY datname;
-SQL
-    )
-    for name in "${names[@]}"; do
-        db="${name}"
-        owner="$(owner_role "${db}")"
-        legacy="${db}"
-        if ! is_managed && ! legacy_schema_exists; then
-            echo "Database ${db} is not managed; leaving it alone"
-            continue
-        fi
-        for attempt in 1 2 3; do
-            if "$0" adopt "${db}" "${host}"; then
-                continue 2
-            fi
-            echo "Attempt ${attempt} to update database ${db} failed" >&2
-            sleep "${POSTGRES_LAYOUT_RETRY_PAUSE:-5}"
-        done
-        failed=1
-    done
-    legacy=''
-    return "${failed}"
-}
-
 # The database is already gone at this point, so a role that cannot be dropped must not fail the
 # action: repeating it could never succeed.
 drop_owner() {
@@ -518,17 +451,6 @@ SQL
 }
 
 command="${1:-}"
-if [[ "${command}" == 'adopt-all' ]]; then
-    host="${2:-}"
-    db=''
-    owner=''
-    member=''
-    legacy=''
-    lock_timeout="${POSTGRES_LAYOUT_LOCK_TIMEOUT:-10s}"
-    adopt_all
-    exit
-fi
-
 db="${2:-}"
 if [[ -z "${command}" || -z "${db}" ]]; then
     usage
@@ -571,6 +493,12 @@ case "${command}" in
         host="${1:-}"
         explain_failure
         adopt
+        ;;
+    convert)
+        host="${1:-}"
+        legacy="${2:-${db}}"
+        explain_failure
+        convert
         ;;
     managed)
         host="${1:-}"

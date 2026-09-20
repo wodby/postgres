@@ -87,9 +87,8 @@ Bundled PostGIS versions for the `*-postgis` tags:
 | `POSTGRES_EFFECTIVE_CACHE_SIZE`         | `1GB`                |                    |
 | `POSTGRES_DB_EXTENSIONS`                |                      | Separated by comma |
 | `POSTGRES_INITDB_PASSWORD`              |                      | Password for the optional role created before initialization imports |
-| `POSTGRES_INITDB_SOURCE_DB`             |                      | Database an imported dump was taken from, see [imports](#imports) |
 | `POSTGRES_INITDB_USER`                  |                      | Optional role created before initialization imports |
-| `POSTGRES_LAYOUT_LOCK_TIMEOUT`          | `10s`                | How long a [conversion](#databases-created-by-earlier-releases) waits for a lock |
+| `POSTGRES_LAYOUT_LOCK_TIMEOUT`          | `10s`                | How long `convert-db` waits for a lock, see [earlier releases](#databases-created-by-earlier-releases) |
 | `POSTGRES_LC_MESSAGES`                  | `en_US.utf8`         |                    |
 | `POSTGRES_LC_MONETARY`                  | `en_US.utf8`         |                    |
 | `POSTGRES_LC_NUMERIC`                   | `en_US.utf8`         |                    |
@@ -136,20 +135,24 @@ exist only while the dump is loaded. A dump that creates roles itself is loaded 
 
 ### Databases created by earlier releases
 
-Releases 1.40 to 1.47 created a schema named after the database and pointed each user's `search_path` at it.
-`adopt-dbs` converts every such database of a server and is meant to run once after the server is upgraded; the next
-`create-db` or `grant-user-db` for such a database converts it as well. A conversion means: objects move to `public`, the users that had access
-become members of the owner role, and the schema and the `search_path` settings are removed. Objects owned by roles
-that were never granted access are left alone.
+Releases 1.40 to 1.47 created a schema named after the database and pointed each user's `search_path` at it. Such a
+database keeps working with this release, but it is not converted on its own. To convert one, run:
 
-- Applications keep working during the conversion and need no restart, as long as they do not name the schema.
+```
+make convert-db name=<db>
+```
+
+Objects move to `public`, the users that had access become members of the owner role, and the schema and the
+`search_path` settings are removed. Objects owned by roles that were never granted access are left alone.
+
+- The application keeps working during the conversion and needs no restart, as long as it does not name the schema.
   An application that does, in its queries, in a `search_path` or schema setting, or in the body of a function, must
   be changed to use `public`.
 - Objects move one statement at a time, each waiting up to `POSTGRES_LAYOUT_LOCK_TIMEOUT` for a lock. If a long
-  transaction makes a statement time out, the action fails, the database stays usable, and repeating the action
+  transaction makes a statement time out, the command fails, the database stays usable, and running it again
   continues where it stopped.
-- A backup of such a database keeps its objects in the schema named after it. Importing that backup under another
-  database name requires `POSTGRES_INITDB_SOURCE_DB` set to the original name, so that schema is converted too.
+- A backup taken before the conversion keeps its objects in that schema. After restoring one, run `convert-db` again.
+  If it was imported into a database with another name, name the schema: `make convert-db name=<db> schema=<old db>`.
 
 ## Orchestration Actions
 
@@ -166,8 +169,8 @@ commands:
       also creates the owner role of the database
     drop-db name
       also drops the owner role of the database
-    adopt-dbs
-      converts the databases created by earlier releases, leaves all others alone
+    convert-db name [schema]
+      moves a database created by releases 1.40 to 1.47 to the public schema
     create-user username password
     drop-user username
     grant-user-db username db
@@ -193,7 +196,7 @@ default params values:
 `create-user` is safe to retry when the existing role accepts the requested password, but fails on a same-named role
 with different credentials rather than replacing it.
 
-`create-db`, `grant-user-db`, `revoke-user-db` and `adopt-dbs` are safe to retry. See [database access](#database-access) for what
+`create-db`, `grant-user-db`, `revoke-user-db` and `convert-db` are safe to retry. See [database access](#database-access) for what
 they set up. `import` keeps the owner role and the users of the database it replaces.
 
 ## Deployment

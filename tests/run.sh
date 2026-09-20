@@ -222,7 +222,11 @@ if sql "${NAME}" legacyreader reader-password legacydb <<< 'SELECT count(*) FROM
 	echo "Users of the earlier layout unexpectedly shared their tables" >&2
 	exit 1
 fi
+# Nothing converts such a database on its own, and it keeps working when a grant is repeated.
 postgres make grant-user-db username='legacyuser' db='legacydb'
+[ "$(admin_sql legacydb <<< "SELECT schemaname FROM pg_tables WHERE tablename = 'tasks'")" = 'legacydb' ]
+[ "$(sql "${NAME}" legacyuser legacy-password legacydb <<< 'SELECT count(*) FROM tasks')" = '2' ]
+postgres make convert-db name='legacydb'
 [ "$(admin_sql legacydb <<< "SELECT count(*) FROM pg_namespace WHERE nspname = 'legacydb'")" = '0' ]
 [ "$(admin_sql legacydb <<< "SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace JOIN pg_roles r ON r.oid = c.relowner WHERE c.relname IN ('tasks', 'log', 'log_2026', 'ticket', 'open_tasks', 'reader_notes', 'tasks_id_seq') AND n.nspname = 'public' AND r.rolname = 'legacydb:owner'")" = '7' ]
 [ "$(admin_sql legacydb <<< "SELECT n.nspname FROM pg_extension e JOIN pg_namespace n ON n.oid = e.extnamespace WHERE e.extname = 'pg_trgm'")" = 'public' ]
@@ -230,35 +234,15 @@ postgres make grant-user-db username='legacyuser' db='legacydb'
 [ "$(sql "${NAME}" legacyuser legacy-password legacydb <<< "INSERT INTO tasks (title) VALUES ('three'); SELECT task_count(), (SELECT count(*) FROM open_tasks), nextval('ticket'), (SELECT width @> 1.5 FROM tasks WHERE id = 1)")" = '3|3|100|t' ]
 [ "$(sql "${NAME}" legacyreader reader-password legacydb <<< 'SELECT (SELECT count(*) FROM tasks), (SELECT count(*) FROM reader_notes)')" = '3|1' ]
 # Converting again finds nothing to do.
-[ "$(postgres make grant-user-db username='legacyreader' db='legacydb' | grep -c -E 'Moving|Transferring')" = '0' ]
+postgres make convert-db name='legacydb' | grep -q 'nothing to convert'
+# A dump of such a database imported under another name keeps the schema of its source.
+admin_sql legacydb <<< 'CREATE SCHEMA sourcedb; CREATE TABLE sourcedb.carried (i int); INSERT INTO sourcedb.carried VALUES (1)'
+postgres make convert-db name='legacydb' schema='sourcedb'
+[ "$(admin_sql legacydb <<< "SELECT schemaname, tableowner FROM pg_tables WHERE tablename = 'carried'")" = 'public|legacydb:owner' ]
+[ "$(sql "${NAME}" legacyuser legacy-password legacydb <<< 'SELECT count(*) FROM carried')" = '1' ]
 postgres make drop-db name='legacydb'
 postgres make drop-user username='legacyuser'
 postgres make drop-user username='legacyreader'
-echo "OK"
-
-echo -n "Adopt the databases of an upgraded server... "
-admin_sql postgres <<'SQL'
-CREATE DATABASE upgraded;
-CREATE DATABASE handmade;
-CREATE USER upgradeduser PASSWORD 'upgraded-password';
-SQL
-admin_sql upgraded <<'SQL'
-CREATE SCHEMA "upgraded";
-GRANT ALL PRIVILEGES ON DATABASE "upgraded" TO "upgradeduser";
-GRANT ALL PRIVILEGES ON SCHEMA "upgraded" TO "upgradeduser";
-ALTER ROLE "upgradeduser" IN DATABASE "upgraded" SET search_path TO "upgraded", public;
-SQL
-sql "${NAME}" upgradeduser upgraded-password upgraded <<< "CREATE TABLE kept (i int); INSERT INTO kept VALUES (1)"
-admin_sql handmade <<< 'CREATE SCHEMA mine; CREATE TABLE mine.kept (i int)'
-postgres make adopt-dbs
-[ "$(admin_sql upgraded <<< "SELECT schemaname, tableowner FROM pg_tables WHERE tablename = 'kept'")" = 'public|upgraded:owner' ]
-[ "$(sql "${NAME}" upgradeduser upgraded-password upgraded <<< 'SELECT current_user, count(*) FROM kept GROUP BY 1')" = 'upgraded:owner|1' ]
-# A database this image did not set up is none of its business.
-[ "$(admin_sql handmade <<< "SELECT schemaname FROM pg_tables WHERE tablename = 'kept'")" = 'mine' ]
-[ "$(admin_sql postgres <<< "SELECT count(*) FROM pg_roles WHERE rolname = 'handmade:owner'")" = '0' ]
-postgres make drop-db name='upgraded'
-postgres make drop-user username='upgradeduser'
-admin_sql postgres <<< 'DROP DATABASE handmade'
 echo "OK"
 
 echo -n "Drop DB... "
@@ -384,15 +368,12 @@ postgres make import source="https://s3.amazonaws.com/wodby-sample-files/postgre
 echo "OK"
 
 echo -n "Running managed initialization import... "
-# What a backup of an earlier release looks like: objects in a schema named after the source
-# database, owned by and granted to roles this server has never had.
+# What a plain pg_dump looks like: objects owned by and granted to roles this server has never had.
 cat > "${managed_import_dir}/import.sql" <<'SQL'
-CREATE SCHEMA sourcedb;
-ALTER SCHEMA sourcedb OWNER TO sourceadmin;
-CREATE TABLE sourcedb.articles (id integer NOT NULL, title text);
-ALTER TABLE sourcedb.articles OWNER TO sourceuser;
-INSERT INTO sourcedb.articles VALUES (1, 'imported');
-GRANT ALL ON SCHEMA sourcedb TO sourceuser;
+CREATE TABLE public.articles (id integer NOT NULL, title text);
+ALTER TABLE public.articles OWNER TO sourceuser;
+INSERT INTO public.articles VALUES (1, 'imported');
+GRANT SELECT ON TABLE public.articles TO sourcereader;
 SQL
 chmod 644 "${managed_import_dir}/import.sql"
 managed_cid="$(
@@ -402,7 +383,6 @@ managed_cid="$(
 		-e POSTGRES_DB='targetdb' \
 		-e POSTGRES_INITDB_USER='targetuser' \
 		-e POSTGRES_INITDB_PASSWORD='target-password' \
-		-e POSTGRES_INITDB_SOURCE_DB='sourcedb' \
 		-e DEBUG \
 		-v "${managed_import_dir}:/wodby/import:ro" \
 		--name "${NAME}-managed" \
@@ -414,8 +394,7 @@ managed_admin_sql() {
 	sql "${NAME}-managed" "${POSTGRES_USER}" "${POSTGRES_PASSWORD}" "$1"
 }
 [ "$(managed_admin_sql targetdb <<< "SELECT schemaname, tableowner FROM pg_tables WHERE tablename = 'articles'")" = 'public|targetdb:owner' ]
-[ "$(managed_admin_sql targetdb <<< "SELECT count(*) FROM pg_namespace WHERE nspname = 'sourcedb'")" = '0' ]
-[ "$(managed_admin_sql postgres <<< "SELECT count(*) FROM pg_roles WHERE rolname IN ('sourceadmin', 'sourceuser')")" = '0' ]
+[ "$(managed_admin_sql postgres <<< "SELECT count(*) FROM pg_roles WHERE rolname IN ('sourceuser', 'sourcereader')")" = '0' ]
 [ "$(sql "${NAME}-managed" targetuser target-password targetdb <<< "INSERT INTO articles VALUES (2, 'written'); SELECT current_user, count(*) FROM articles GROUP BY 1")" = 'targetdb:owner|2' ]
 managed_admin_sql postgres <<< "CREATE USER stranger PASSWORD 'stranger-password'"
 if sql "${NAME}-managed" stranger stranger-password targetdb <<< 'SELECT 1' 2>/dev/null; then
