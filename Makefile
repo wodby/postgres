@@ -57,10 +57,14 @@ endif
 
 .PHONY: build buildx-push buildx-build test push shell run start stop logs clean release
 
+# Resolve the same pinned base image for every local and CI build target.
+include base-images.mk
+BASE_IMAGE_TAG = $(POSTGRES_VER)-alpine
+
 default: build
 
 build:
-	docker build -t $(REPO):$(TAG) \
+	docker build --build-arg BASE_IMAGE="$(BASE_IMAGE)" -t $(REPO):$(TAG) \
 		--build-arg POSTGRES_VER=$(POSTGRES_VER) \
 		--build-arg POSTGRES_MAJOR_VER=$(POSTGRES_MAJOR_VER) \
 		--build-arg WITH_POSTGIS=$(WITH_POSTGIS) \
@@ -72,7 +76,7 @@ build:
 		./
 
 buildx-build:
-	docker buildx build --platform $(PLATFORM) -t $(REPO):$(TAG) \
+	docker buildx build --build-arg BASE_IMAGE="$(BASE_IMAGE)" --platform $(PLATFORM) -t $(REPO):$(TAG) \
 		--build-arg POSTGRES_VER=$(POSTGRES_VER) \
 		--build-arg POSTGRES_MAJOR_VER=$(POSTGRES_MAJOR_VER) \
 		--build-arg WITH_POSTGIS=$(WITH_POSTGIS) \
@@ -86,7 +90,7 @@ buildx-build:
 		./
 
 buildx-push:
-	docker buildx build --platform $(PLATFORM) --push -t $(REPO):$(TAG) \
+	docker buildx build --build-arg BASE_IMAGE="$(BASE_IMAGE)" --platform $(PLATFORM) --push -t $(REPO):$(TAG) \
 		--build-arg POSTGRES_VER=$(POSTGRES_VER) \
 		--build-arg POSTGRES_MAJOR_VER=$(POSTGRES_MAJOR_VER) \
 		--build-arg WITH_POSTGIS=$(WITH_POSTGIS) \

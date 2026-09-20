@@ -1,6 +1,10 @@
+# check=skip=InvalidDefaultArgInFrom
+
+# The Makefile supplies the required digest-pinned BASE_IMAGE argument.
 ARG POSTGRES_VER
 
-FROM postgres:${POSTGRES_VER:-18}-alpine
+ARG BASE_IMAGE
+FROM ${BASE_IMAGE}
 
 ARG POSTGRES_VER
 ARG POSTGRES_MAJOR_VER
