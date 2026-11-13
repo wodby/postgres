@@ -3,7 +3,7 @@
 # Accept legacy build arguments during the image revision transition.
 IMAGE_REVISION ?= $(STABILITY_TAG)
 
-POSTGRES_VER ?= 18.6
+POSTGRES_VER ?= 18.7
 WITH_POSTGIS ?= 0
 
 PGVECTOR_VERSION ?= 0.8.6
