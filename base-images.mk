@@ -7,7 +7,7 @@ BASE_IMAGE_DIGEST_14.25-alpine := sha256:14078c4aa0db8e2e8492866138cafd796fc39af
 BASE_IMAGE_DIGEST_15.20-alpine := sha256:5cb339462bde5e6b617acedf6c2a3008f3aadc44a3c0507dd22226ee1279aee8
 BASE_IMAGE_DIGEST_16.16-alpine := sha256:0adbf25a9e96d38823bb813f3ac0ed41fadb665c88f1df7fe6dbfb060cbdc106
 BASE_IMAGE_DIGEST_17.12-alpine := sha256:34261f594522cf41dfcb76aefd42b9d201098b0e6b23c9c68733f169e4218b6f
-BASE_IMAGE_DIGEST_18.7-alpine := sha256:75dcac3dfb1cd01ca3536910bbc84128759362f8b118bf8c55b38a94f68f3b73
+BASE_IMAGE_DIGEST_18.7-alpine := sha256:b6972e1115a4ff8eba5d7f7d19184926d1e16d7d1136ae1e1a7ebf286da0f015
 
 # Fail before building when a version or variant has no reviewed pin.
 BASE_IMAGE = $(BASE_IMAGE_REPOSITORY):$(BASE_IMAGE_TAG)@$(or $(BASE_IMAGE_DIGEST_$(BASE_IMAGE_TAG)),$(error No base image digest for $(BASE_IMAGE_REPOSITORY):$(BASE_IMAGE_TAG); update base-images.mk))
