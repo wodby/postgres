@@ -9,6 +9,12 @@ on:
       - '*'
       - '!*-r[0-9]*'
 
+# Runs of one branch or tag never overlap, so an older master run cannot finish
+# last and move floating tags back; a newer pending run replaces an older one.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
 env:
   POSTGRES18: '18.7'
   POSTGRES17: '17.12'
@@ -79,12 +85,9 @@ jobs:
           image: docker:${{ steps.build-image.outputs.image }}
       - name: Push scanned architecture image
         if: github.event_name == 'push'
-        env:
-          POSTGRES_VER: ${{ matrix.pg.version }}
-          WITH_POSTGIS: ${{ matrix.pg.with_postgis }}
-          ARCH: ${{ matrix.arch }}
-        run: make push
-
+        uses: wodby/images/.github/actions/arch-image-push@2da5f02ec3dffc5cb3331152e01e3c89874b0bfe
+        with:
+          image: ${{ steps.build-image.outputs.image }}
   push:
     runs-on: ubuntu-latest
     needs:
@@ -99,6 +102,7 @@ jobs:
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
+      - uses: wodby/images/.github/actions/arch-image-pins@2da5f02ec3dffc5cb3331152e01e3c89874b0bfe
       - uses: ./.github/actions
         with:
           version: ${{ matrix.pg.version }}
