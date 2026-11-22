@@ -11,6 +11,7 @@ export POSTGRES_USER='superuser'
 export POSTGRES_DB='postgres'
 export POSTGRES_INITDB_USER='managed_user'
 export POSTGRES_INITDB_PASSWORD='managed-password'
+export POSTGRES_MAX_PREPARED_TRANSACTIONS='16'
 
 import_dir="$(mktemp -d)"
 managed_import_dir="$(mktemp -d)"
@@ -71,6 +72,7 @@ cid="$(
 		-e POSTGRES_INITDB_PASSWORD \
 		-e POSTGRES_DB_EXTENSIONS \
 		-e POSTGRES_SHARED_PRELOAD_LIBRARIES \
+		-e POSTGRES_MAX_PREPARED_TRANSACTIONS \
 		-e DEBUG \
 		-v "${import_dir}:/wodby/import:ro" \
 		--name "${NAME}" \
@@ -106,6 +108,19 @@ postgres make check-ready max_try=12 wait_seconds=5
 echo -n "Checking initialization import user... "
 [ "$(postgres make query-silent user="${POSTGRES_INITDB_USER}" password="${POSTGRES_INITDB_PASSWORD}" query='SELECT value FROM managed_import_test')" = 'imported' ]
 [ "$(postgres make query-silent query="SELECT tableowner FROM pg_catalog.pg_tables WHERE tablename = 'managed_import_test'")" = "${POSTGRES_INITDB_USER}" ]
+echo "OK"
+
+echo -n "Checking prepared transactions... "
+[ "$(postgres make query-silent query='SHOW max_prepared_transactions')" = '16' ]
+admin_sql postgres <<'SQL'
+CREATE TABLE prepared_transaction_test (value text NOT NULL);
+BEGIN;
+INSERT INTO prepared_transaction_test VALUES ('prepared');
+PREPARE TRANSACTION 'wodby_test';
+COMMIT PREPARED 'wodby_test';
+SQL
+[ "$(postgres make query-silent query='SELECT value FROM prepared_transaction_test')" = 'prepared' ]
+admin_sql postgres <<< 'DROP TABLE prepared_transaction_test'
 echo "OK"
 
 echo -n "Checking extensions... "
@@ -393,6 +408,8 @@ docker run --rm -e POSTGRES_USER -e POSTGRES_PASSWORD -e POSTGRES_DB='targetdb' 
 managed_admin_sql() {
 	sql "${NAME}-managed" "${POSTGRES_USER}" "${POSTGRES_PASSWORD}" "$1"
 }
+# Prepared transactions stay off unless POSTGRES_MAX_PREPARED_TRANSACTIONS turns them on.
+[ "$(managed_admin_sql postgres <<< 'SHOW max_prepared_transactions')" = '0' ]
 [ "$(managed_admin_sql targetdb <<< "SELECT schemaname, tableowner FROM pg_tables WHERE tablename = 'articles'")" = 'public|targetdb:owner' ]
 [ "$(managed_admin_sql postgres <<< "SELECT count(*) FROM pg_roles WHERE rolname IN ('sourceuser', 'sourcereader')")" = '0' ]
 [ "$(sql "${NAME}-managed" targetuser target-password targetdb <<< "INSERT INTO articles VALUES (2, 'written'); SELECT current_user, count(*) FROM articles GROUP BY 1")" = 'targetdb:owner|2' ]
