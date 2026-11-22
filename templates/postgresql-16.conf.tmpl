@@ -1,6 +1,7 @@
 listen_addresses = '*'
 
 max_connections = {{ getenv "POSTGRES_MAX_CONNECTIONS" "100" }}
+max_prepared_transactions = {{ getenv "POSTGRES_MAX_PREPARED_TRANSACTIONS" "0" }}
 
 shared_buffers = {{ getenv "POSTGRES_SHARED_BUFFERS" "512MB" }}
 

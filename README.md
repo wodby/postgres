@@ -102,6 +102,7 @@ Bundled PostGIS versions for the `*-postgis` tags:
 | `POSTGRES_LOG_TIMEZONE`                 | `UTC`                |                    |
 | `POSTGRES_MAINTENANCE_WORK_MEM`         | `128MB`              |                    |
 | `POSTGRES_MAX_CONNECTIONS`              | `100`                |                    |
+| `POSTGRES_MAX_PREPARED_TRANSACTIONS`    | `0`                  | Prepared transactions for two-phase commit; `0` turns them off |
 | `POSTGRES_MAX_WAL_SIZE`                 | `2GB`                | >=9.5              |
 | `POSTGRES_MIN_WAL_SIZE`                 | `1GB`                | >=9.5              |
 | `POSTGRES_SHARED_BUFFERS`               | `512MB`              |                    |
